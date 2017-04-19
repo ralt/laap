@@ -5,8 +5,8 @@
 
 (test delay
   (laap:with-magic
-    (loop for i from 1 upto 3
-       do (laap:delay i
-		      (lambda (i)
-			(format t "~a~%" i))
-		      i))))
+    (format t "foo~%")
+    (laap:delay 2)
+    (format t "bar~%")
+    (laap:delay 2)
+    (format t "baz~%")))

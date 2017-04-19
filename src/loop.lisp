@@ -2,8 +2,7 @@
 
 (defclass timer ()
   ((fire-time :initarg :fire-time :reader fire-time)
-   (callback :initarg :callback :reader callback)
-   (args :initarg :args :reader args)))
+   (callback :initarg :callback :reader callback)))
 
 (defclass event-loop ()
   ((timers :initform nil :accessor timers)))
@@ -23,7 +22,7 @@
 	     (if (< (fire-time timer) now)
 		 (progn
 		   (pop (timers loop))
-		   (apply (callback timer) (args timer)))
+		   (funcall (callback timer)))
 		 (return)))
 	   (return)))
     (when (timers loop)
@@ -34,11 +33,10 @@
       (push new-element list)
       (push new-element (cdr (nthcdr (1- index) list)))))
 
-(defun add-callback (loop fire-time callback args)
+(defun add-callback (loop fire-time callback)
   (let ((new-timer (make-instance 'timer
 				  :fire-time fire-time
-				  :callback callback
-				  :args args)))
+				  :callback callback)))
     (if (timers loop)
 	(loop for i from 0 upto (1- (length (timers loop)))
 	   do (progn
