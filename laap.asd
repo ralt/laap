@@ -7,5 +7,5 @@
   :components ((:module "src"
 		:components ((:file "package")
 			     (:file "laap" :depends-on ("package" "loop"))
-			     (:file "gettimeofday" :depends-on ("package"))
-			     (:file "loop" :depends-on ("package" "gettimeofday"))))))
+			     (:file "cffi" :depends-on ("package"))
+			     (:file "loop" :depends-on ("package" "cffi"))))))
