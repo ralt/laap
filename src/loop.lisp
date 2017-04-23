@@ -1,18 +1,46 @@
 (in-package #:laap)
 
 (defclass timer ()
-  ((fire-time :initarg :fire-time :reader fire-time)
+  ((direction :initarg :direction :reader direction)
    (callback :initarg :callback :reader callback)))
 
 (defclass event-loop ()
-  ((timers :initform nil :accessor timers)))
+  ((timers :accessor timers)))
+
+(defmethod initialize-instance ((loop event-loop) &key)
+  (setf (timers loop) (make-hash-table)))
 
 (defun start (loop)
+  ;; TODO: Don't hardcode 64.
+  (let ((events (cffi:foreign-alloc '(:struct epoll-event) :count 64)))
+    (unwind-protect
+	 (let ((efd (epoll-create1 0)))
+	   (when (= efd -1)
+	     (error "epoll_create1"))
+	   (unwind-protect
+		(progn
+		  (maphash
+		   (lambda (timerfd timer)
+		     (cffi:with-foreign-object (event '(:struct epoll-event))
+		       (setf (cffi:foreign-slot-value
+			      (cffi:foreign-slot-value event '(:struct epoll-event) 'data)
+			      'epoll-data-t
+			      'fd)
+			     timerfd)
+		       (setf (cffi:foreign-slot-value event '(:struct epoll-event) 'events)
+			     (logior (direction timer) +epollet+ +epolloneshot+))
+
+		       (when (= (epoll-ctl efd +epoll-ctl-add+ timerfd event) -1)
+			 (error "epoll_ctl"))))
+		   (timers loop))
+		  (main-loop loop efd events))
+	     (c-close efd)))
+      (cffi:foreign-free events))))
+
+(defun main-loop (loop efd events)
   (loop
-     (let ((next-timeout (run-timers loop)))
-       (unless next-timeout
-	 (return))
-       (sleep next-timeout))))
+     (loop for i from 0 to (1- (epoll-pwait efd events 64 -1 0))
+	do (print i))))
 
 (defun run-timers (loop)
   (let ((now (gettimeofday)))
