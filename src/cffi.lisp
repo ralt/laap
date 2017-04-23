@@ -1,7 +1,10 @@
 (in-package #:laap)
 
-;;; open flags
+;;; open/close
 (defconstant +o-cloexec+ #o02000000)
+
+(cffi:defcfun ("close" c-close) :int
+  (fd :int))
 
 ;;; errno
 (defconstant +eperm+ 1)
@@ -54,6 +57,9 @@
 (defconstant +epoll-ctl-add+ 1)
 (defconstant +epoll-ctl-del+ 2)
 (defconstant +epoll-ctl-mod+ 3)
+
+(defconstant +epollin+ 1)
+(defconstant +epollout+ 4)
 
 (defconstant +epolloneshot+ (ash 1 30))
 (defconstant +epollet+ (ash 1 31))
