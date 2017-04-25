@@ -60,6 +60,8 @@
 
 (defconstant +epollin+ 1)
 (defconstant +epollout+ 4)
+(defconstant +epollerr+ 8)
+(defconstant +epollhup+ 16)
 
 (defconstant +epolloneshot+ (ash 1 30))
 (defconstant +epollet+ (ash 1 31))
@@ -107,7 +109,7 @@
   (it-value (:struct timespec)))
 
 (cffi:defcfun ("timerfd_create" timerfd-create) :int
-  (clockid clockid-t)
+  (clockid :int)
   (flags :int))
 
 (cffi:defcfun ("timerfd_settime" timerfd-settime) :int

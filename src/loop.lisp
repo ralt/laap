@@ -4,6 +4,12 @@
   ((direction :initarg :direction :reader direction)
    (callback :initarg :callback :reader callback)))
 
+(defmethod handle-error ((timer timer) error)
+  (funcall (callback timer) error nil))
+
+(defmethod handle-event ((timer timer) fd)
+  )
+
 (defclass event-loop ()
   ((timers :accessor timers)))
 
@@ -29,7 +35,6 @@
 			     timerfd)
 		       (setf (cffi:foreign-slot-value event '(:struct epoll-event) 'events)
 			     (logior (direction timer) +epollet+ +epolloneshot+))
-
 		       (when (= (epoll-ctl efd +epoll-ctl-add+ timerfd event) -1)
 			 (error "epoll_ctl"))))
 		   (timers loop))
@@ -39,8 +44,22 @@
 
 (defun main-loop (loop efd events)
   (loop
+     (when (= (length (timers loop)) 0)
+       (return-from main-loop))
      (loop for i from 0 to (1- (epoll-pwait efd events 64 -1 0))
-	do (print i))))
+	do (block continue
+	     (let* ((event (cffi:mem-aref events '(:struct epoll-event) i))
+		    (event-events (cffi:foreign-slot-value event '(:struct epoll-event) 'events))
+		    (event-data (cffi:foreign-slot-value event '(:struct epoll-event) 'data))
+		    (fd (cffi:foreign-slot-value event-data 'epoll-data-t 'fd))
+		    (timer (gethash fd (timers loop))))
+	      (when (or (> (logand event-events +epollerr+) 0)
+			(> (logand event-events +epollhup+) 0))
+		(return-from continue
+		  (handle-error timer (make-condition 'error "epoll error"))))
+	      (handle-event timer fd)
+	      ;; Attach back the event given that we're using EPOLLONESHOT.
+	      )))))
 
 (defun run-timers (loop)
   (let ((now (gettimeofday)))
