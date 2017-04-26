@@ -45,7 +45,7 @@
 				  (new-value '(:struct itimerspec))
 				  (interval-timespec '(:struct itimerspec))
 				  (interval-value '(:struct itimerspec)))
-	(setf (cffi:foreign-slot-value value-timespec '(:struct timespec) 'tv-sec) now-sec)
+	(setf (cffi:foreign-slot-value value-timespec '(:struct timespec) 'tv-sec) (+ seconds now-sec))
 	(setf (cffi:foreign-slot-value value-timespec '(:struct timespec) 'tv-nsec) (* now-usec 1000))
 	(setf (cffi:foreign-slot-value new-value '(:struct itimerspec) 'it-value) value-timespec)
 

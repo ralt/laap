@@ -16,6 +16,8 @@
   ((direction :initform +epollin+)))
 
 (defmethod handle-event ((timer-timer))
+  ;; We don't really need to read the timer fd, once we get
+  ;; an event, it can only mean that it's ready.
   (funcall (callback timer-timer) nil)
   (c-close (fd timer-timer))
   (setf (closed timer-timer) t))
