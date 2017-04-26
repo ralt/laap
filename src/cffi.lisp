@@ -48,7 +48,7 @@
   (cffi:with-foreign-objects ((tv '(:pointer (:struct timeval))))
     (%gettimeofday tv (cffi:null-pointer))
     (cffi:with-foreign-slots ((tv-sec tv-usec) tv (:struct timeval))
-      (+ tv-sec (/ tv-usec 1000000)))))
+      (values tv-sec tv-usec))))
 
 ;;; epoll
 (cffi:defcfun ("epoll_create1" epoll-create1) :int

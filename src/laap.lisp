@@ -38,4 +38,20 @@
 	  (list ',function-name ,@(cdr (reverse args)) 'laap:self))))))
 
 (defpublic delay (seconds callback)
-  (add-callback *loop* (+ seconds (gettimeofday)) callback))
+  (let ((timerfd (timerfd-create +clock-realtime+ 0)))
+    (multiple-value-bind (now-sec now-usec)
+	(gettimeofday)
+      (cffi:with-foreign-objects ((value-timespec '(:struct timespec))
+				  (new-value '(:struct itimerspec))
+				  (interval-timespec '(:struct itimerspec))
+				  (interval-value '(:struct itimerspec)))
+	(setf (cffi:foreign-slot-value value-timespec '(:struct timespec) 'tv-sec) now-sec)
+	(setf (cffi:foreign-slot-value value-timespec '(:struct timespec) 'tv-nsec) (* now-usec 1000))
+	(setf (cffi:foreign-slot-value new-value '(:struct itimerspec) 'it-value) value-timespec)
+
+	(setf (cffi:foreign-slot-value interval-timespec '(:struct timespec) 'tv-sec) 0)
+	(setf (cffi:foreign-slot-value interval-timespec '(:struct timespec) 'tv-nsec) 0)
+	(setf (cffi:foreign-slot-value new-value '(:struct itimerspec) 'it-value) interval-timespec)
+
+	(timerfd-settime timerfd 0 new-value (cffi:null-pointer))))
+    (add-timer *loop* (make-instance 'timer-timer :fd timerfd :callback callback))))

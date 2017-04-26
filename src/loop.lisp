@@ -1,17 +1,28 @@
 (in-package #:laap)
 
 (defclass timer ()
-  ((direction :initarg :direction :reader direction)
-   (callback :initarg :callback :reader callback)))
+  ((fd :initarg :fd :reader fd)
+   (direction :initarg :direction :reader direction)
+   (callback :initarg :callback :reader callback)
+   (closed :initform nil :accessor closed)))
 
 (defmethod handle-error ((timer timer) error)
   (funcall (callback timer) error nil))
 
-(defgeneric handle-event (timer fd)
+(defgeneric handle-event (timer)
   (:documentation "Handles an event for a file descriptor"))
 
+(defclass timer-timer (timer)
+  ((direction :initform +epollin+)))
+
+(defmethod handle-event ((timer-timer))
+  (funcall (callback timer-timer) nil)
+  (c-close (fd timer-timer))
+  (setf (closed timer-timer) t))
+
 (defclass event-loop ()
-  ((timers :accessor timers)))
+  ((timers :accessor timers)
+   (efd :accessor efd)))
 
 (defmethod initialize-instance ((loop event-loop) &key)
   (setf (timers loop) (make-hash-table)))
@@ -23,20 +34,12 @@
 	 (let ((efd (epoll-create1 0)))
 	   (when (= efd -1)
 	     (error "epoll_create1"))
+	   (setf (efd loop) efd)
 	   (unwind-protect
 		(progn
 		  (maphash
 		   (lambda (timerfd timer)
-		     (cffi:with-foreign-object (event '(:struct epoll-event))
-		       (setf (cffi:foreign-slot-value
-			      (cffi:foreign-slot-value event '(:struct epoll-event) 'data)
-			      'epoll-data-t
-			      'fd)
-			     timerfd)
-		       (setf (cffi:foreign-slot-value event '(:struct epoll-event) 'events)
-			     (logior (direction timer) +epollet+ +epolloneshot+))
-		       (when (= (epoll-ctl efd +epoll-ctl-add+ timerfd event) -1)
-			 (error "epoll_ctl"))))
+		     (add-event efd timerfd timer))
 		   (timers loop))
 		  (main-loop loop efd events))
 	     (c-close efd)))
@@ -58,5 +61,22 @@
 		(return-from continue
 		  (handle-error timer (make-condition 'error "epoll error"))))
 	      (unwind-protect
-		   (handle-event timer fd)
-		(epoll-ctl efd +epoll-ctl-mod+ fd event)))))))
+		   (handle-event timer)
+		(unless (closed timer)
+		  (epoll-ctl efd +epoll-ctl-mod+ fd event))))))))
+
+(defun add-timer (loop timer)
+  (setf (gethash (fd timer) (timers loop)) timer)
+  (add-event (efd loop) (fd timer) timer))
+
+(defun add-event (efd timerfd timer)
+  (cffi:with-foreign-object (event '(:struct epoll-event))
+    (setf (cffi:foreign-slot-value
+	   (cffi:foreign-slot-value event '(:struct epoll-event) 'data)
+	   'epoll-data-t
+	   'fd)
+	  timerfd)
+    (setf (cffi:foreign-slot-value event '(:struct epoll-event) 'events)
+	  (logior (direction timer) +epollet+ +epolloneshot+))
+    (when (= (epoll-ctl efd +epoll-ctl-add+ timerfd event) -1)
+      (error "epoll_ctl"))))
