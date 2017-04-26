@@ -7,8 +7,8 @@
 (defmethod handle-error ((timer timer) error)
   (funcall (callback timer) error nil))
 
-(defmethod handle-event ((timer timer) fd)
-  )
+(defgeneric handle-event (timer fd)
+  (:documentation "Handles an event for a file descriptor"))
 
 (defclass event-loop ()
   ((timers :accessor timers)))
@@ -57,40 +57,6 @@
 			(> (logand event-events +epollhup+) 0))
 		(return-from continue
 		  (handle-error timer (make-condition 'error "epoll error"))))
-	      (handle-event timer fd)
-	      ;; Attach back the event given that we're using EPOLLONESHOT.
-	      )))))
-
-(defun run-timers (loop)
-  (let ((now (gettimeofday)))
-    (loop
-       (if (timers loop)
-	   (let ((timer (first (timers loop))))
-	     (if (< (fire-time timer) now)
-		 (progn
-		   (pop (timers loop))
-		   (funcall (callback timer)))
-		 (return)))
-	   (return)))
-    (when (timers loop)
-      (- (fire-time (first (timers loop))) now))))
-
-(defun insert-before (list index new-element)
-  (if (= index 0)
-      (push new-element list)
-      (push new-element (cdr (nthcdr (1- index) list)))))
-
-(defun add-callback (loop fire-time callback)
-  (let ((new-timer (make-instance 'timer
-				  :fire-time fire-time
-				  :callback callback)))
-    (if (timers loop)
-	(loop for i from 0 upto (1- (length (timers loop)))
-	   do (progn
-		(when (< fire-time (fire-time (nth i (timers loop))))
-		  (insert-before (timers loop) i new-timer)
-		  (return))
-		(when (= i (1- (length (timers loop))))
-		  ;; Oops, we're the last item.
-		  (setf (timers loop) (append (timers loop) (list new-timer))))))
-	(push new-timer (timers loop)))))
+	      (unwind-protect
+		   (handle-event timer fd)
+		(epoll-ctl efd +epoll-ctl-mod+ fd event)))))))
