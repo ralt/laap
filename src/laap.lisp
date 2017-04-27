@@ -35,7 +35,7 @@
        (defmacro ,name ,(cdr (reverse args))
 	 (list
 	  'cl-coroutine:yield
-	  (list ',function-name ,@(cdr (reverse args)) 'laap:self))))))
+	  (list ',function-name ,@(cdr (reverse args)) 'self))))))
 
 (defpublic delay (seconds callback)
   (let ((timerfd (timerfd-create +clock-monotonic+ 0)))
