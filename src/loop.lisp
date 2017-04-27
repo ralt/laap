@@ -15,19 +15,21 @@
 (defclass timer-timer (timer)
   ((direction :initform +epollin+)))
 
-(defmethod handle-event ((timer-timer))
+(defmethod handle-event ((timer timer-timer))
   ;; We don't really need to read the timer fd, once we get
   ;; an event, it can only mean that it's ready.
-  (funcall (callback timer-timer) nil)
-  (c-close (fd timer-timer))
-  (setf (closed timer-timer) t))
+  (funcall (callback timer) nil)
+  (setf (closed timer) t)
+  (c-close (fd timer)))
 
 (defclass event-loop ()
-  ((timers :accessor timers)
+  ((started :accessor started)
+   (timers :accessor timers)
    (efd :accessor efd)))
 
 (defmethod initialize-instance ((loop event-loop) &key)
-  (setf (timers loop) (make-hash-table)))
+  (setf (timers loop) (make-hash-table))
+  (setf (started loop) nil))
 
 (defun start (loop)
   ;; TODO: Don't hardcode 64.
@@ -43,13 +45,15 @@
 		   (lambda (timerfd timer)
 		     (add-event efd timerfd timer))
 		   (timers loop))
+		  (setf (started loop) t)
 		  (main-loop loop efd events))
 	     (c-close efd)))
       (cffi:foreign-free events))))
 
 (defun main-loop (loop efd events)
   (loop
-     (when (= (length (timers loop)) 0)
+     (when (= (hash-table-count (timers loop)) 0)
+       (setf (started loop) nil)
        (return-from main-loop))
      (loop for i from 0 to (1- (epoll-pwait efd events 64 -1 0))
 	do (block continue
@@ -69,7 +73,8 @@
 
 (defun add-timer (loop timer)
   (setf (gethash (fd timer) (timers loop)) timer)
-  (add-event (efd loop) (fd timer) timer))
+  (when (started loop)
+    (add-event (efd loop) (fd timer) timer)))
 
 (defun add-event (efd timerfd timer)
   (cffi:with-foreign-object (event '(:struct epoll-event))
