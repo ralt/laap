@@ -18,10 +18,12 @@
 (defmethod handle-event ((timer timer-timer) loop)
   ;; We don't really need to read the timer fd, once we get
   ;; an event, it can only mean that it's ready.
-  (funcall (callback timer))
-  (setf (closed timer) t)
-  (remhash (fd timer) (timers loop))
-  (c-close (fd timer)))
+  (unwind-protect
+       (funcall (callback timer))
+    (progn
+      (setf (closed timer) t)
+      (remhash (fd timer) (timers loop))
+      (c-close (fd timer)))))
 
 (defclass event-loop ()
   ((started :accessor started)
@@ -72,10 +74,9 @@
 			(setf (started loop) nil)
 			(return-from main-loop))
 		      (return-from continue))))
-	      (unwind-protect
-		   (handle-event timer loop)
-		(unless (closed timer)
-		  (epoll-ctl efd +epoll-ctl-mod+ fd event)))
+	      (handle-event timer loop)
+	      (unless (closed timer)
+		(epoll-ctl efd +epoll-ctl-mod+ fd event))
 	      (when (= (hash-table-count (timers loop)) 0)
 		(setf (started loop) nil)
 		(return-from main-loop)))))))
