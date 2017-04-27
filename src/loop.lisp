@@ -55,7 +55,7 @@
      (when (= (hash-table-count (timers loop)) 0)
        (setf (started loop) nil)
        (return-from main-loop))
-     (loop for i from 0 to (1- (epoll-pwait efd events 64 -1 0))
+     (loop for i from 0 to (1- (epoll-wait efd events 64 -1))
 	do (block continue
 	     (let* ((event (cffi:mem-aref events '(:struct epoll-event) i))
 		    (event-events (cffi:foreign-slot-value event '(:struct epoll-event) 'events))
