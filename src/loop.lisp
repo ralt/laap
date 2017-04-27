@@ -7,7 +7,8 @@
    (closed :initform nil :accessor closed)))
 
 (defmethod handle-error ((timer timer) error)
-  (funcall (callback timer) error nil))
+  (let ((*error* error))
+    (funcall (callback timer))))
 
 (defgeneric handle-event (timer loop)
   (:documentation "Handles an event for a file descriptor"))

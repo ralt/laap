@@ -25,6 +25,12 @@
        (defun ,name (&rest arguments)
 	 (apply self arguments)))))
 
+(defvar *error* nil
+  "The error value shadowed by the handle-event and handle-error methods.")
+
+(defvar *result* nil
+  "The result value shadowed by the handle-error and handle-event methods.")
+
 (defmacro defpublic (name args &body body)
   (let ((function-name (intern (concatenate 'string "laap-public-" (symbol-name name)))))
     `(progn
@@ -34,8 +40,11 @@
 	 ,@body)
        (defmacro ,name ,(cdr (reverse args))
 	 (list
-	  'cl-coroutine:yield
-	  (list ',function-name ,@(cdr (reverse args)) 'self))))))
+	  'progn
+	  (list 'cl-coroutine:yield
+		(list ',function-name ,@(cdr (reverse args)) 'self))
+	  (list 'when '*error* (list 'error '*error*))
+	  '*result*)))))
 
 (defpublic delay (seconds callback)
   (let ((timerfd (timerfd-create +clock-monotonic+ 0)))
