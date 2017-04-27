@@ -94,6 +94,12 @@
   (timeout :int)
   (sigmask :pointer))
 
+(cffi:defcfun ("epoll_wait" epoll-wait) :int
+  (epfd :int)
+  (events :pointer)
+  (maxevents :int)
+  (timeout :int))
+
 ;;; timers
 ;; TODO: use CLOCK_MONOTONIC and replace gettimeofday with clock_gettime()
 (defconstant +clock-realtime+ 0)
