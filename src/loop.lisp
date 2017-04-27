@@ -9,17 +9,18 @@
 (defmethod handle-error ((timer timer) error)
   (funcall (callback timer) error nil))
 
-(defgeneric handle-event (timer)
+(defgeneric handle-event (timer loop)
   (:documentation "Handles an event for a file descriptor"))
 
 (defclass timer-timer (timer)
   ((direction :initform +epollin+)))
 
-(defmethod handle-event ((timer timer-timer))
+(defmethod handle-event ((timer timer-timer) loop)
   ;; We don't really need to read the timer fd, once we get
   ;; an event, it can only mean that it's ready.
-  (funcall (callback timer) nil)
+  (funcall (callback timer))
   (setf (closed timer) t)
+  (remhash (fd timer) (timers loop))
   (c-close (fd timer)))
 
 (defclass event-loop ()
@@ -58,18 +59,26 @@
      (loop for i from 0 to (1- (epoll-wait efd events 64 -1))
 	do (block continue
 	     (let* ((event (cffi:mem-aref events '(:struct epoll-event) i))
-		    (event-events (cffi:foreign-slot-value event '(:struct epoll-event) 'events))
-		    (event-data (cffi:foreign-slot-value event '(:struct epoll-event) 'data))
+		    (event-events (getf event 'events))
+		    (event-data (getf event 'data))
 		    (fd (cffi:foreign-slot-value event-data 'epoll-data-t 'fd))
 		    (timer (gethash fd (timers loop))))
 	      (when (or (> (logand event-events +epollerr+) 0)
 			(> (logand event-events +epollhup+) 0))
-		(return-from continue
-		  (handle-error timer (make-condition 'error "epoll error"))))
+		(unwind-protect
+		     (handle-error timer (make-condition 'error "epoll error"))
+		  (if (= (hash-table-count (timers loop)) 0)
+		      (progn
+			(setf (started loop) nil)
+			(return-from main-loop))
+		      (return-from continue))))
 	      (unwind-protect
-		   (handle-event timer)
+		   (handle-event timer loop)
 		(unless (closed timer)
-		  (epoll-ctl efd +epoll-ctl-mod+ fd event))))))))
+		  (epoll-ctl efd +epoll-ctl-mod+ fd event)))
+	      (when (= (hash-table-count (timers loop)) 0)
+		(setf (started loop) nil)
+		(return-from main-loop)))))))
 
 (defun add-timer (loop timer)
   (setf (gethash (fd timer) (timers loop)) timer)
