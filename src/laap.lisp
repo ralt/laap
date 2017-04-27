@@ -38,7 +38,7 @@
 	  (list ',function-name ,@(cdr (reverse args)) 'laap:self))))))
 
 (defpublic delay (seconds callback)
-  (let ((timerfd (timerfd-create +clock-realtime+ 0)))
+  (let ((timerfd (timerfd-create +clock-monotonic+ 0)))
     (multiple-value-bind (integer remaining)
 	(floor seconds)
       (cffi:with-foreign-objects ((value-timespec '(:struct timespec))

@@ -18,38 +18,6 @@
 (defconstant +enospc+ 28)
 (defconstant +eloop+ 40)
 
-;;; gettimeofday
-(cffi:defcstruct timeval
-  (tv-sec :long)
-  (tv-usec :long))
-
-(cffi:defcstruct timezone
-  (tz-minuteswest :int)
-  (tz-dsttime :int))
-
-(defmethod translate-to-foreign (value (name (eql 'null-pointer)))
-  (cond
-    ((null value) (cffi:null-pointer))
-    ((cffi:null-pointer-p value) value)
-    (t (error "~A is not a null pointer." value))))
-
-(cffi:defctype syscall-result :int)
-
-(defmethod translate-from-foreign (value (name (eql 'syscall-result)))
-  (if (minusp value)
-      (error "System call failed with return value ~D." value)
-      value))
-
-(cffi:defcfun ("gettimeofday" %gettimeofday) syscall-result
-  (tp :pointer)
-  (tzp :pointer))
-
-(defun gettimeofday ()
-  (cffi:with-foreign-objects ((tv '(:pointer (:struct timeval))))
-    (%gettimeofday tv (cffi:null-pointer))
-    (cffi:with-foreign-slots ((tv-sec tv-usec) tv (:struct timeval))
-      (values tv-sec tv-usec))))
-
 ;;; epoll
 (cffi:defcfun ("epoll_create1" epoll-create1) :int
   (flags :int))
@@ -101,8 +69,7 @@
   (timeout :int))
 
 ;;; timers
-;; TODO: use CLOCK_MONOTONIC and replace gettimeofday with clock_gettime()
-(defconstant +clock-realtime+ 0)
+(defconstant +clock-monotonic+ 1)
 
 (cffi:defctype time-t :long)
 
