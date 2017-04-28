@@ -18,12 +18,12 @@
 
 (defmacro deflaap (name args &body body)
   (let ((coroutine (gensym)))
-    `(let ((self nil))
-       (cl-coroutine:defcoroutine ,coroutine ,args
-	 ,@body)
-       (setf self (cl-coroutine:make-coroutine ',coroutine))
-       (defun ,name (&rest arguments)
-	 (apply self arguments)))))
+    `(defun ,name ,args
+       (let ((self nil))
+	 (cl-coroutine:defcoroutine ,coroutine ()
+	   ,@body)
+	 (setf self (cl-coroutine:make-coroutine ',coroutine))
+	 (funcall self)))))
 
 (defvar *error* nil
   "The error value shadowed by the handle-event and handle-error methods.")
@@ -32,9 +32,8 @@
   "The result value shadowed by the handle-error and handle-event methods.")
 
 (defmacro defpublic (name args &body body)
-  (let ((function-name (intern (concatenate 'string "laap-public-" (symbol-name name)))))
+  (let ((function-name (intern (concatenate 'string "%" (symbol-name name)))))
     `(progn
-       (export ',function-name)
        (export ',name)
        (defun ,function-name ,args
 	 ,@body)

@@ -3,26 +3,26 @@
 (def-suite laap :description "Baz")
 (in-suite laap)
 
-(defun main (&rest args)
+(test delay
   (laap:with-magic
-    (loop for i from 0 upto 10
-       do (laap:spawn 'wait-and-print))))
+    (format t "foo~%")
+    (laap:delay 1)
+    (format t "bar~%")
+    (laap:delay 1)
+    (format t "baz~%")))
 
 (defun wait-and-print (i)
   (let ()
     (lambda ()
-      (let ((laap::self nil))
-	(cl-coroutine:defcoroutine foo ()
-	  (format t "foo ~a~%" i)
-	  (laap:delay 2)
-	  (format t "bar ~a~%" i)
-	  (laap:delay 2)
-	  (format t "baz ~a~%" i))
-	(setf laap::self (cl-coroutine:make-coroutine 'foo))
-	(funcall laap::self)))))
+      (laap:deflaap %wait-and-print ()
+	(format t "foo ~a~%" i)
+	(laap:delay (1+ (random 1.0)))
+	(format t "bar ~a~%" i)
+	(laap:delay (1+ (random 1.0)))
+	(format t "baz ~a~%" i))
+      (%wait-and-print))))
 
-(test delay
+(test spawn-delay
   (laap:with-magic
-    (loop for i from 0 upto 10
-       do (laap:spawn (wait-and-print i)))
-    (laap:delay 5)))
+    (loop for i below 3
+       do (laap:spawn (wait-and-print i)))))
