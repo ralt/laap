@@ -70,8 +70,6 @@
 (defpublic delay (seconds callback)
   (add-timer-in seconds callback))
 
-(defun spawn (laap &rest arguments)
-  ;; TODO: add a way to have arguments to a timer's callback.
-  (declare (ignore arguments))
+(defun spawn (laap)
   ;; 1 microsecond is the minimum value a timerfd needs.
   (add-timer-in 0.000001 laap))
