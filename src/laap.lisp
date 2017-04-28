@@ -46,7 +46,7 @@
 	  (list 'when '*error* (list 'error '*error*))
 	  '*result*)))))
 
-(defpublic delay (seconds callback)
+(defun add-timer-in (seconds callback)
   (let ((timerfd (timerfd-create +clock-monotonic+ 0)))
     (multiple-value-bind (integer remaining)
 	(floor seconds)
@@ -55,7 +55,7 @@
 				  (interval-timespec '(:struct itimerspec)))
 	(setf (cffi:foreign-slot-value value-timespec '(:struct timespec) 'tv-sec) integer)
 	(setf (cffi:foreign-slot-value value-timespec '(:struct timespec) 'tv-nsec)
-	      (* remaining 1000000))
+	      (round (* remaining 1000000)))
 	(setf (cffi:foreign-slot-value new-value '(:struct itimerspec) 'it-value)
 	      value-timespec)
 
@@ -66,3 +66,12 @@
 
 	(timerfd-settime timerfd 0 new-value (cffi:null-pointer))))
     (add-timer *loop* (make-instance 'timer-timer :fd timerfd :callback callback))))
+
+(defpublic delay (seconds callback)
+  (add-timer-in seconds callback))
+
+(defun spawn (laap &rest arguments)
+  ;; TODO: add a way to have arguments to a timer's callback.
+  (declare (ignore arguments))
+  ;; 1 microsecond is the minimum value a timerfd needs.
+  (add-timer-in 0.000001 laap))

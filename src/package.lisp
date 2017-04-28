@@ -2,4 +2,5 @@
   (:use #:cl)
   (:export #:with-magic
 	   #:deflaap
-	   #:delay))
+	   #:delay
+	   #:spawn))
