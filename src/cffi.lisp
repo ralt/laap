@@ -34,7 +34,7 @@
 (defconstant +epolloneshot+ (ash 1 30))
 (defconstant +epollet+ (ash 1 31))
 
-(cffi:defcstruct epoll-event
+(cffi:defcstruct (epoll-event :size 12)
   (events :uint32)
   (data :uint64))
 
