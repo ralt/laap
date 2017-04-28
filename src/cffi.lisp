@@ -34,33 +34,15 @@
 (defconstant +epolloneshot+ (ash 1 30))
 (defconstant +epollet+ (ash 1 31))
 
-(cffi:defcunion epoll-data
-  (ptr :pointer)
-  (fd :int)
-  (u32 :uint32)
-  (u64 :uint64))
-
-(cffi:defctype epoll-data-t (:union epoll-data))
-
 (cffi:defcstruct epoll-event
   (events :uint32)
-  (data epoll-data-t))
+  (data :uint64))
 
 (cffi:defcfun ("epoll_ctl" epoll-ctl) :int
   (epfd :int)
   (op :int)
   (fd :int)
   (event :pointer))
-
-(cffi:defcstruct sigset-t
-  (sig :unsigned-long))
-
-(cffi:defcfun ("epoll_pwait" epoll-pwait) :int
-  (epfd :int)
-  (events :pointer)
-  (maxevents :int)
-  (timeout :int)
-  (sigmask :pointer))
 
 (cffi:defcfun ("epoll_wait" epoll-wait) :int
   (epfd :int)

@@ -63,13 +63,8 @@
 	do (block continue
 	     (let* ((event (cffi:mem-aref events '(:struct epoll-event) i))
 		    (event-events (getf event 'events))
-		    (event-data (getf event 'data))
-		    (fd (cffi:foreign-slot-value event-data 'epoll-data-t 'fd))
+		    (fd (ldb (byte 32 0) (getf event 'data)))
 		    (timer (gethash fd (timers loop))))
-	       (format t "event ~a~%" event)
-	       (format t "data ~a~%" event-data)
-	       (format t "timer: ~a~%" timer)
-	       (format t "fd: ~a~%" fd)
 	       (when (or (> (logand event-events +epollerr+) 0)
 			 (> (logand event-events +epollhup+) 0)
 			 (not (logand event-events (direction timer))))
@@ -94,11 +89,7 @@
 
 (defun add-event (efd timerfd timer)
   (cffi:with-foreign-object (event '(:struct epoll-event))
-    (setf (cffi:foreign-slot-value
-	   (cffi:foreign-slot-value event '(:struct epoll-event) 'data)
-	   'epoll-data-t
-	   'fd)
-	  timerfd)
+    (setf (cffi:foreign-slot-value event '(:struct epoll-event) 'data) timerfd)
     (setf (cffi:foreign-slot-value event '(:struct epoll-event) 'events)
 	  (logior (direction timer) +epollet+ +epolloneshot+))
     (when (= (epoll-ctl efd +epoll-ctl-add+ timerfd event) -1)
