@@ -126,7 +126,8 @@
 			      (loop for pipe in sync-write-pipes
 				 do (cffi:with-foreign-object (buf :char)
 				      (setf (cffi:mem-ref buf :char) 0)
-				      (c-write pipe buf 1)))
+				      (c-write pipe buf 1)
+				      (c-close pipe)))
 			      (return-from main-loop)))))))))
       (cffi:foreign-free events))))
 
