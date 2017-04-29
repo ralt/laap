@@ -1,6 +1,7 @@
 (in-package #:laap)
 
 ;;; open/close
+(defconstant +o-nonblock+ #o00004000)
 (defconstant +o-cloexec+ #o02000000)
 
 (cffi:defcfun ("close" c-close) :int
@@ -22,6 +23,16 @@
 
 (cffi:defcfun ("strerror" strerror) :string
   (errnum :int))
+
+;;; pipe
+(cffi:defcfun ("pipe2" %pipe2) :int
+  (pipefds :pointer)
+  (flags :int))
+
+(defun pipe ()
+  (cffi:with-foreign-object (pipefds :int 2)
+    (%pipe2 pipefds +o-nonblock+)
+    (values (cffi:mem-aref pipefds :int 0) (cffi:mem-aref pipefds :int 1))))
 
 ;;; epoll
 (cffi:defcfun ("epoll_create1" epoll-create1) :int
