@@ -4,6 +4,11 @@
 (defconstant +o-nonblock+ #o00004000)
 (defconstant +o-cloexec+ #o02000000)
 
+(cffi:defcfun ("write" c-write) :int
+  (fd :int)
+  (buf :pointer)
+  (count :unsigned-int))
+
 (cffi:defcfun ("close" c-close) :int
   (fd :int))
 
