@@ -97,7 +97,7 @@
 	 (loop
 	    (sb-ext:with-locked-hash-table ((timers loop))
 	      (when (= (hash-table-count (timers loop)) 0)
-		(return-from main-loop)))
+		(return-from main-loop (quit-event-loop sync-write-pipes))))
 	    (let ((n (epoll-wait efd events 1 -1)))
 	      (when (> n 0)
 		(loop for i below n
@@ -116,20 +116,22 @@
 				 (handle-error timer (make-condition 'error "epoll error"))
 			      (sb-ext:with-locked-hash-table ((timers loop))
 				(if (= (hash-table-count (timers loop)) 0)
-				    (return-from main-loop)
+				    (return-from main-loop (quit-event-loop sync-write-pipes))
 				    (return-from continue)))))
 			  (handle-event timer loop)
 			  (unless (closed timer)
 			    (epoll-ctl efd +epoll-ctl-mod+ fd event))
 			  (sb-ext:with-locked-hash-table ((timers loop))
 			    (when (= (hash-table-count (timers loop)) 0)
-			      (loop for pipe in sync-write-pipes
-				 do (cffi:with-foreign-object (buf :char)
-				      (setf (cffi:mem-ref buf :char) 0)
-				      (c-write pipe buf 1)
-				      (c-close pipe)))
-			      (return-from main-loop)))))))))
+			      (return-from main-loop (quit-event-loop sync-write-pipes))))))))))
       (cffi:foreign-free events))))
+
+(defun quit-event-loop (sync-write-pipes)
+  (loop for pipe in sync-write-pipes
+     do (cffi:with-foreign-object (buf :char)
+	  (setf (cffi:mem-ref buf :char) 0)
+	  (c-write pipe buf 1)
+	  (c-close pipe))))
 
 (defun add-timer (loop timer)
   (sb-ext:with-locked-hash-table ((timers loop))
