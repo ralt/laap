@@ -18,6 +18,11 @@
 (defconstant +enospc+ 28)
 (defconstant +eloop+ 40)
 
+(cffi:defcvar ("errno" errno) :int)
+
+(cffi:defcfun ("strerror" strerror) :string
+  (errnum :int))
+
 ;;; epoll
 (cffi:defcfun ("epoll_create1" epoll-create1) :int
   (flags :int))

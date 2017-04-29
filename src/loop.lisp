@@ -1,5 +1,7 @@
 (in-package #:laap)
 
+;;; TODO: figure out how to improve the locked hash table.
+
 (defclass timer ()
   ((fd :initarg :fd :reader fd)
    (direction :initarg :direction :reader direction)
@@ -23,7 +25,8 @@
        (funcall (callback timer))
     (progn
       (setf (closed timer) t)
-      (remhash (fd timer) (timers loop))
+      (sb-ext:with-locked-hash-table ((timers loop))
+	(remhash (fd timer) (timers loop)))
       (c-close (fd timer)))))
 
 (defclass event-loop ()
@@ -63,41 +66,56 @@
 				(lambda ()
 				  (main-loop loop efd))
 				:name (format nil "laap event loop ~a" i)))))
-      (loop for thread in threads
-	 do (bt:join-thread thread)))))
+      (unwind-protect
+	   (loop for thread in threads
+	      do (let ((thread-name (bt:thread-name thread)))
+		   (handler-case
+		       (bt:join-thread thread)
+		     (error ()
+		       (push (bt:make-thread
+			      (lambda ()
+				(main-loop loop efd))
+			      :name thread-name)
+			     threads)))))
+	(progn
+	  (setf (started loop) nil)
+	  (c-close efd))))))
 
 (defun main-loop (loop efd)
   (let ((events (cffi:foreign-alloc '(:struct epoll-event) :count 1)))
     (unwind-protect
 	 (loop
-	    (when (= (hash-table-count (timers loop)) 0)
-	      (return-from main-loop))
+	    (sb-ext:with-locked-hash-table ((timers loop))
+	      (when (= (hash-table-count (timers loop)) 0)
+		(return-from main-loop)))
 	    (let ((n (epoll-wait efd events 1 -1)))
-	      (loop for i below n
-		 do (block continue
-		      (let* ((event (cffi:mem-aref events '(:struct epoll-event) i))
-			     (event-events (getf event 'events))
-			     (fd (ldb (byte 32 0) (getf event 'data)))
-			     (timer (gethash fd (timers loop))))
-			(when (or (> (logand event-events +epollerr+) 0)
-				  (> (logand event-events +epollhup+) 0)
-				  (not (logand event-events (direction timer))))
-			  (unwind-protect
-			       (handle-error timer (make-condition 'error "epoll error"))
-			    (if (= (hash-table-count (timers loop)) 0)
-				(return-from main-loop)
-				(return-from continue))))
-			(handle-event timer loop)
-			(unless (closed timer)
-			  (epoll-ctl efd +epoll-ctl-mod+ fd event))
-			(when (= (hash-table-count (timers loop)) 0)
-			  (setf (started loop) nil)
-			  (c-close efd)
-			  (return-from main-loop)))))))
+	      (when (> n 0)
+		(loop for i below n
+		   do (block continue
+			(let* ((event (cffi:mem-aref events '(:struct epoll-event) i))
+			       (event-events (getf event 'events))
+			       (fd (ldb (byte 32 0) (getf event 'data)))
+			       (timer (sb-ext:with-locked-hash-table ((timers loop))
+					(gethash fd (timers loop)))))
+			  (when (or (> (logand event-events +epollerr+) 0)
+				    (> (logand event-events +epollhup+) 0))
+			    (unwind-protect
+				 (handle-error timer (make-condition 'error "epoll error"))
+			      (sb-ext:with-locked-hash-table ((timers loop))
+				(if (= (hash-table-count (timers loop)) 0)
+				    (return-from main-loop)
+				    (return-from continue)))))
+			  (handle-event timer loop)
+			  (unless (closed timer)
+			    (epoll-ctl efd +epoll-ctl-mod+ fd event))
+			  (sb-ext:with-locked-hash-table ((timers loop))
+			    (when (= (hash-table-count (timers loop)) 0)
+			      (return-from main-loop)))))))))
       (cffi:foreign-free events))))
 
 (defun add-timer (loop timer)
-  (setf (gethash (fd timer) (timers loop)) timer)
+  (sb-ext:with-locked-hash-table ((timers loop))
+    (setf (gethash (fd timer) (timers loop)) timer))
   (when (started loop)
     (add-event (efd loop) (fd timer) timer)))
 

@@ -47,6 +47,8 @@
 
 (defun add-timer-in (seconds callback)
   (let ((timerfd (timerfd-create +clock-monotonic+ 0)))
+    (when (= timerfd -1)
+      (error (strerror errno)))
     (multiple-value-bind (integer remaining)
 	(floor seconds)
       (cffi:with-foreign-objects ((value-timespec '(:struct timespec))
