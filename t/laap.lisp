@@ -15,11 +15,11 @@
   (let ()
     (lambda ()
       (laap:deflaap %wait-and-print ()
-	(format t "foo ~a~%" i)
+	(format t "foo on thread ~a~%" (bt:thread-name (bt:current-thread)))
 	(laap:delay (1+ (random 1.0)))
-	(format t "bar ~a~%" i)
+	(format t "bar on thread ~a~%" (bt:thread-name (bt:current-thread)))
 	(laap:delay (1+ (random 1.0)))
-	(format t "baz ~a~%" i))
+	(format t "baz on thread ~a~%" (bt:thread-name (bt:current-thread))))
       (%wait-and-print))))
 
 (test spawn-delay
