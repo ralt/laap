@@ -25,12 +25,6 @@
 	 (setf self (cl-coroutine:make-coroutine ',coroutine))
 	 (funcall self)))))
 
-(defvar *error* nil
-  "The error value shadowed by the handle-event and handle-error methods.")
-
-(defvar *result* nil
-  "The result value shadowed by the handle-error and handle-event methods.")
-
 (defmacro defpublic (name args &body body)
   (let ((function-name (intern (concatenate 'string "%" (symbol-name name)))))
     `(progn

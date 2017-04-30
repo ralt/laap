@@ -6,6 +6,7 @@
   :depends-on (:cffi :cl-coroutine :bordeaux-threads :uiop :cl-ppcre)
   :components ((:module "src"
 		:components ((:file "package")
-			     (:file "laap" :depends-on ("package" "loop"))
+			     (:file "laap" :depends-on ("package" "loop" "timer"))
 			     (:file "cffi" :depends-on ("package"))
-			     (:file "loop" :depends-on ("package" "cffi"))))))
+			     (:file "timer" :depends-on ("package" "cffi"))
+			     (:file "loop" :depends-on ("package" "cffi" "timer"))))))
