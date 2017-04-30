@@ -9,4 +9,7 @@
 			     (:file "laap" :depends-on ("package" "loop" "timer"))
 			     (:file "cffi" :depends-on ("package"))
 			     (:file "timer" :depends-on ("package" "cffi"))
-			     (:file "loop" :depends-on ("package" "cffi" "timer"))))))
+			     (:file "loop" :depends-on ("package" "cffi" "timer"))))
+	       (:module "socket"
+		:components ((:file "package")
+			     (:file "socket")))))
