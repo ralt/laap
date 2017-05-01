@@ -3,7 +3,7 @@
   :author "Florian Margaine <florian@margaine.com>"
   :license "GPLv3"
   :serial t
-  :depends-on (:cffi :cl-coroutine :bordeaux-threads :uiop :cl-ppcre)
+  :depends-on (:cffi :cl-coroutine :bordeaux-threads :uiop :cl-ppcre :cffi-libffi)
   :components ((:module "core"
 		:components ((:file "package")
 			     (:file "laap" :depends-on ("package" "loop" "timer"))

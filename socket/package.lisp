@@ -1,3 +1,4 @@
 (defpackage #:laap/socket
   (:use #:cl)
-  (:export #:socket))
+  (:export #:ipv4-socket
+	   #:connect))
