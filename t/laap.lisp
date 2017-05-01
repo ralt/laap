@@ -1,4 +1,4 @@
-(in-package #:laap-test)
+(in-package #:laap/test)
 
 (def-suite laap :description "Baz")
 (in-suite laap)
