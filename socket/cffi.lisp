@@ -58,3 +58,9 @@
   (optname :int)
   (optval :pointer)
   (optlen :pointer))
+
+(cffi:defcfun ("send" c-send) :int
+  (sockfd :int)
+  (buf :pointer)
+  (len :unsigned-int)
+  (flags :int))

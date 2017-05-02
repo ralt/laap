@@ -56,3 +56,10 @@
 
 (defun close (socket)
   (c-close (fd socket)))
+
+(laap:defmethodpublic send ((socket ipv4-socket) data callback)
+  (let ((timer (make-instance 'timer-socket-send :fd (fd socket) :callback callback)))
+    ))
+
+(defclass timer-socket-send (laap:timer)
+  ((laap:direction :initform +epollout+)))
