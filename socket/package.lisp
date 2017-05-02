@@ -2,4 +2,5 @@
   (:use #:cl)
   (:export #:ipv4-socket
 	   #:connect
-	   #:close))
+	   #:close)
+  (:shadow #:close))
