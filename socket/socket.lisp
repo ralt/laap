@@ -8,20 +8,6 @@
 
 (defclass ipv4-socket (socket) ())
 
-(defclass timer-socket-connect (laap:timer)
-  ((socket :initarg :socket :reader socket)
-   (laap:direction :initform +epollout+)))
-
-(defmethod laap:handle-event ((timer timer-socket-connect) loop)
-  (cffi:with-foreign-objects ((optval '(:pointer :int))
-			      (optlen '(:pointer :uint)))
-    (getsockopt (laap:fd timer) +sol-socket+ +so-error+ optval optlen)
-    (when (= (cffi:mem-ref optval :int) 0)
-      (funcall (laap:callback timer))
-      (setf (laap:closed timer) t)
-      (return-from laap:handle-event (laap:remove-timer loop timer)))
-    (laap:handle-error timer (make-condition 'error (strerror (cffi:mem-ref optval :int))))))
-
 (defmethod initialize-instance ((socket ipv4-socket) &key)
   (setf (slot-value socket 'domain) +af-inet+)
   (setf (slot-value socket 'type) (logior +sock-stream+ +sock-nonblock+))
@@ -54,6 +40,19 @@
 	    (return-from %connect (laap:handle-error timer
 						     (make-condition 'error (strerror errno)))))
 	  (laap:add-timer laap:*loop* timer))))))
+
+(defclass timer-socket-connect (laap:timer)
+  ((laap:direction :initform +epollout+)))
+
+(defmethod laap:handle-event ((timer timer-socket-connect) loop)
+  (cffi:with-foreign-objects ((optval '(:pointer :int))
+			      (optlen '(:pointer :uint)))
+    (getsockopt (laap:fd timer) +sol-socket+ +so-error+ optval optlen)
+    (when (= (cffi:mem-ref optval :int) 0)
+      (funcall (laap:callback timer))
+      (setf (laap:closed timer) t)
+      (return-from laap:handle-event (laap:remove-timer loop timer)))
+    (laap:handle-error timer (make-condition 'error (strerror (cffi:mem-ref optval :int))))))
 
 (defun close (socket)
   (c-close (fd socket)))
