@@ -54,3 +54,6 @@
 	    (return-from %connect (laap:handle-error timer
 						     (make-condition 'error (strerror errno)))))
 	  (laap:add-timer laap:*loop* timer))))))
+
+(defun close (socket)
+  (c-close (fd socket)))

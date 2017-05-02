@@ -28,6 +28,9 @@
 (cffi:defcfun ("strerror" strerror) :string
   (errnum :int))
 
+(cffi:defcfun ("close" c-close) :int
+  (fd :int))
+
 (cffi:defcstruct in-addr
   (s-addr :uint32))
 
