@@ -91,7 +91,9 @@
 				(if (= (hash-table-count (timers loop)) 0)
 				    (return-from main-loop (quit-event-loop sync-write-pipes))
 				    (return-from continue)))))
+
 			  (handle-event timer loop)
+
 			  (unless (closed timer)
 			    (epoll-ctl efd +epoll-ctl-mod+ fd event))
 			  (sb-ext:with-locked-hash-table ((timers loop))
@@ -111,6 +113,10 @@
     (setf (gethash (fd timer) (timers loop)) timer))
   (when (started loop)
     (add-event (efd loop) (fd timer) timer)))
+
+(defun remove-timer (loop timer)
+  (sb-ext:with-locked-hash-table ((timers loop))
+    (remhash (fd timer) (timers loop))))
 
 (defun add-event (efd timerfd timer)
   (%add-event efd timerfd (direction timer)))

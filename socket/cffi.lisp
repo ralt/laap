@@ -1,5 +1,23 @@
 (in-package #:laap/socket)
 
+;;; Domains
+(defconstant +af-inet+ 2)
+
+;;; Types
+(defconstant +sock-stream+ 1)
+(defconstant +sock-nonblock+ 2048)
+
+;;; Errors
+(defconstant +einprogress+ 115)
+
+;;; Epoll
+(defconstant +epollin+ 1)
+(defconstant +epollout+ 4)
+
+;;; Socket options
+(defconstant +sol-socket+ 1)
+(defconstant +so-error+ 4)
+
 (cffi:defcfun ("socket" c-socket) :int
   (domain :int)
   (type :int)
@@ -30,3 +48,10 @@
   (sockfd :int)
   (addr :pointer)
   (addrlen :uint))
+
+(cffi:defcfun ("getsockopt" getsockopt) :int
+  (sockfd :int)
+  (level :int)
+  (optname :int)
+  (optval :pointer)
+  (optlen :pointer))

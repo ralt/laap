@@ -25,17 +25,32 @@
 	 (setf self (cl-coroutine:make-coroutine ',coroutine))
 	 (funcall self)))))
 
-(defmacro defpublic (name args &body body)
+(defmacro defunpublic (name args &body body)
   (let ((function-name (intern (concatenate 'string "%" (symbol-name name)))))
     `(progn
        (export ',name)
-       (defun ,function-name ,args
+       (defmethod ,function-name ,args
 	 ,@body)
-       (defmacro ,name ,(cdr (reverse args))
+       (defmacro ,name ,(reverse (cdr (reverse args)))
 	 (list
 	  'progn
 	  (list 'cl-coroutine:yield
-		(list ',function-name ,@(cdr (reverse args)) 'self))
+		(list ',function-name ,@(reverse (cdr (reverse args))) 'self))
+	  (list 'when '*error* (list 'error '*error*))
+	  '*result*)))))
+
+(defmacro defmethodpublic (name args &body body)
+  (let ((macro-args (append (list (first (first args))) (rest args)))
+	(function-name (intern (concatenate 'string "%" (symbol-name name)))))
+    `(progn
+       (export ',name)
+       (defmethod ,function-name ,args
+	 ,@body)
+       (defmacro ,name ,(reverse (cdr (reverse macro-args)))
+	 (list
+	  'progn
+	  (list 'cl-coroutine:yield
+		(list ',function-name ,@(reverse (cdr (reverse macro-args))) 'self))
 	  (list 'when '*error* (list 'error '*error*))
 	  '*result*)))))
 
@@ -62,7 +77,7 @@
 	(timerfd-settime timerfd 0 new-value (cffi:null-pointer))))
     (add-timer *loop* (make-instance 'timer-timer :fd timerfd :callback callback))))
 
-(defpublic delay (seconds callback)
+(defunpublic delay (seconds callback)
   (add-timer-in seconds callback))
 
 (defun spawn (laap)
