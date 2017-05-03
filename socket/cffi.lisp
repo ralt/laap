@@ -69,3 +69,9 @@
   (buf :pointer)
   (len :unsigned-int)
   (flags :int))
+
+(cffi:defcfun ("recv" c-recv) :int
+  (sockfd :int)
+  (buf :pointer)
+  (len :unsigned-int)
+  (flags :int))

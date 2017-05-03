@@ -5,11 +5,17 @@
 (defclass event-loop ()
   ((started :accessor started)
    (timers :accessor timers)
-   (efd :accessor efd)))
+   (efd :accessor efd)
+   (recv-buffer-length :reader recv-buffer-length)))
 
 (defmethod initialize-instance ((loop event-loop) &key)
   (setf (timers loop) (make-hash-table))
-  (setf (started loop) nil))
+  (setf (started loop) nil)
+  (setf (slot-value loop 'recv-buffer-length) (find-recv-buffer-length)))
+
+(defun find-recv-buffer-length ()
+  (with-open-file (f "/proc/sys/net/core/rmem_default")
+    (parse-integer (read-line f))))
 
 (defun cores-count ()
   (if (uiop:getenvp "LAAP_MAX_LOOPS")

@@ -12,7 +12,10 @@
 	   #:add-timer
 	   #:remove-timer
 	   #:*loop*
+	   #:*error*
+	   #:*result*
 	   #:callback
 	   #:direction
 	   #:fd
-	   #:closed))
+	   #:closed
+	   #:recv-buffer-length))

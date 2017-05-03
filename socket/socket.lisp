@@ -77,7 +77,7 @@
        (let* ((data-length (length (data timer))))
 	 (cffi:with-foreign-object (buf :char data-length)
 	   (loop for i below data-length
-	      do (setf (cffi:mem-ref buf :char i) (elt (data timer) i)))
+	      do (setf (cffi:mem-aref buf :char i) (elt (data timer) i)))
 	   (let ((sent (c-send (fd timer) buf data-length flags)))
 	     ;; :(
 	     (when (= sent -1)
@@ -93,3 +93,34 @@
 	       (return-from laap:handle-event (laap:remove-timer loop timer)))
 	     ;; ¯\_(ツ)_/¯
 	     (setf (data timer) (subseq (data timer) (1- sent)))))))))
+
+(laap:defmethodpublic receive ((socket ipv4-socket) callback)
+  (let ((timer (make-instance 'timer-socket-receive
+			      :fd (fd socket)
+			      :callback callback)))
+    ;; We don't need to wait for the socket to be ready,
+    ;; we can read to it directly, and it will tell us
+    ;; whenever we need to wait for it again.
+    (laap:handle-event timer laap:*loop*)))
+
+(defclass timer-socket-receive (laap:timer)
+  ((laap:direction :initform +epollin+)))
+
+(defmethod laap:handle-event ((timer timer-socket-receive) loop)
+  (cffi:with-foreign-object (buf :char (laap:recv-buffer-length loop))
+    (let ((received (c-recv (fd timer) buf (laap:recv-buffer-length loop) 0)))
+      ;; :(
+      (when (= received -1)
+	(return-from laap:handle-event
+	  (if (= errno +ewouldblock+)
+	      (laap:add-timer loop timer)
+	      (laap:handle-error timer (make-condition 'error
+						       (strerror errno))))))
+      ;; :)
+      (let ((lisp-buffer (make-array received :element-type '(unsigned-byte 8))))
+	(loop for i below received
+	   do (setf (elt lisp-buffer i) (cffi:mem-aref buf :char i)))
+	(let ((laap:*result* lisp-buffer))
+	  (funcall (laap:callback timer)))
+	(setf (laap:closed timer) t)
+	(laap:remove-timer loop timer)))))
