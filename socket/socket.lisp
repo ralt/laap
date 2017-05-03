@@ -58,8 +58,37 @@
   (c-close (fd socket)))
 
 (laap:defmethodpublic send ((socket ipv4-socket) data callback)
-  (let ((timer (make-instance 'timer-socket-send :fd (fd socket) :callback callback)))
-    ))
+  (let ((timer (make-instance 'timer-socket-send
+			      :fd (fd socket)
+			      :callback callback
+			      :data data)))
+    ;; We don't need to wait for the socket to be ready,
+    ;; we can write to it directly, and it will tell us
+    ;; whenever we need to wait for it again.
+    (laap:handle-event timer laap:*loop*)))
 
 (defclass timer-socket-send (laap:timer)
-  ((laap:direction :initform +epollout+)))
+  ((laap:direction :initform +epollout+)
+   (data :initarg :data :accessor data)))
+
+(defmethod laap:handle-event ((timer timer-socket-send) loop)
+  (let ((flags +msg-nosignal+))
+    (loop
+       (cffi:with-foreign-object (buf :char (length (data timer)))
+	 (loop for i below (length (data timer))
+	    do (setf (cffi:mem-ref buf :char i) (elt (data timer) i)))
+	 (let ((sent (c-send (fd timer) buf (length (data timer)) flags)))
+	   ;; :(
+	   (when (= sent -1)
+	     (return-from laap:handle-event
+	       (if (= errno +ewouldblock+)
+		   (laap:add-timer loop timer)
+		   (laap:handle-error timer (make-condition 'error
+							    (strerror errno))))))
+	   ;; :)
+	   (when (= sent (length (data timer)))
+	     (funcall (laap:callback timer))
+	     (setf (laap:closed timer) t)
+	     (return-from laap:handle-event (laap:remove-timer loop timer)))
+	   ;; ¯\_(ツ)_/¯
+	   (setf (data timer) (subseq (data timer) (1- sent))))))))

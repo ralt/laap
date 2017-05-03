@@ -8,6 +8,8 @@
 (defconstant +sock-nonblock+ 2048)
 
 ;;; Errors
+(defconstant +eagain+ 11)
+(defconstant +ewouldblock+ 11)
 (defconstant +einprogress+ 115)
 
 ;;; Epoll
@@ -17,6 +19,9 @@
 ;;; Socket options
 (defconstant +sol-socket+ 1)
 (defconstant +so-error+ 4)
+
+;;; send(2) flags
+(defconstant +msg-nosignal+ 16384)
 
 (cffi:defcfun ("socket" c-socket) :int
   (domain :int)
