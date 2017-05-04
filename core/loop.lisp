@@ -125,7 +125,10 @@
     (remhash (fd timer) (timers loop))))
 
 (defun add-event (efd timerfd timer)
-  (%add-event efd timerfd (direction timer)))
+  (handler-case
+      (%add-event efd timerfd (direction timer))
+    (error (e)
+      (handle-error timer e))))
 
 (defun %add-event (efd fd direction)
   (cffi:with-foreign-object (event '(:struct epoll-event))
@@ -133,4 +136,6 @@
     (setf (cffi:foreign-slot-value event '(:struct epoll-event) 'events)
 	  (logior direction +epollet+ +epolloneshot+))
     (when (= (epoll-ctl efd +epoll-ctl-add+ fd event) -1)
-      (error "epoll_ctl"))))
+      (unless (= errno +eexist+)
+	(error (strerror errno)))
+      (epoll-ctl efd +epoll-ctl-mod+ fd event))))

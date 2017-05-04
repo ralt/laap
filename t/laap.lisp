@@ -3,7 +3,7 @@
 (def-suite laap :description "Baz")
 (in-suite laap)
 
-;;; Run with: /buildapp --output bin/foo --asdf-tree ~/quicklisp/ --load-system laap-test --entry laap-test::main --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format t "~A~%" c)))'
+;;; Run with: ./buildapp --output bin/foo --asdf-tree ~/quicklisp/ --load-system laap-test --entry laap/test::main --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format t "~A~%" c)))'
 ;;; for strace runs et al.
 (defun main (&rest args)
   (laap:with-magic

@@ -3,7 +3,7 @@
   :author "Florian Margaine <florian@margaine.com>"
   :license "MIT"
   :serial t
-  :depends-on (:laap :fiveam)
+  :depends-on (:laap :fiveam :babel :hunchentoot)
   :components ((:module "t"
 		:components ((:file "package")
 			     (:file "laap" :depends-on ("package"))
