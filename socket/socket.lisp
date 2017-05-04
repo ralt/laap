@@ -78,7 +78,7 @@
 	 (cffi:with-foreign-object (buf :char data-length)
 	   (loop for i below data-length
 	      do (setf (cffi:mem-aref buf :char i) (elt (data timer) i)))
-	   (let ((sent (c-send (fd timer) buf data-length flags)))
+	   (let ((sent (c-send (laap:fd timer) buf data-length flags)))
 	     ;; :(
 	     (when (= sent -1)
 	       (return-from laap:handle-event
@@ -108,7 +108,7 @@
 
 (defmethod laap:handle-event ((timer timer-socket-receive) loop)
   (cffi:with-foreign-object (buf :char (laap:recv-buffer-length loop))
-    (let ((received (c-recv (fd timer) buf (laap:recv-buffer-length loop) 0)))
+    (let ((received (c-recv (laap:fd timer) buf (laap:recv-buffer-length loop) 0)))
       ;; :(
       (when (= received -1)
 	(return-from laap:handle-event
