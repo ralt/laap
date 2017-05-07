@@ -1,21 +1,15 @@
 (defpackage #:laap
   (:use #:cl)
-  (:export #:with-magic
-	   #:deflaap
+  (:export #:start
 	   #:delay
 	   #:spawn
-	   #:defunpublic
-	   #:defmethodpublic
 	   #:timer
-	   #:handle-error
 	   #:handle-event
+	   #:handle-error
 	   #:add-timer
 	   #:remove-timer
-	   #:*loop*
-	   #:*error*
-	   #:*result*
 	   #:callback
 	   #:direction
 	   #:fd
-	   #:closed
-	   #:recv-buffer-length))
+	   #:noop
+	   #:*recv-buffer-length*))

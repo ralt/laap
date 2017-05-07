@@ -6,5 +6,6 @@
   :depends-on (:laap :fiveam :babel :hunchentoot)
   :components ((:module "t"
 		:components ((:file "package")
-			     (:file "laap" :depends-on ("package"))
-			     (:file "socket" :depends-on ("package"))))))
+			     (:file "laap" :depends-on ("package" "test"))
+			     (:file "socket" :depends-on ("package" "test"))
+			     (:file "test" :depends-on ("package"))))))

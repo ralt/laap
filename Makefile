@@ -11,7 +11,7 @@ test: $(QL_LOCAL)/setup.lisp
 	@sbcl $(LOCAL_OPTS) $(QL_OPTS) \
 		--eval '(push "$(PWD)/" asdf:*central-registry*)' \
 		--eval '(ql:quickload :$(TEST_PACKAGE))' \
-		--eval '(unless (5am:run-all-tests) (uiop:quit 1))' \
+		--eval '(unless (laap/test:run-all-tests) (uiop:quit 1))' \
 		--quit
 	@echo
 

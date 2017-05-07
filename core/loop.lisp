@@ -2,16 +2,21 @@
 
 ;;; TODO: figure out how to improve the locked hash table.
 
+;; A reasonable default, overridden by the loop.
+(defvar *recv-buffer-length* 4096)
+
 (defclass event-loop ()
   ((started :accessor started)
    (timers :accessor timers)
    (efd :accessor efd)
-   (recv-buffer-length :reader recv-buffer-length)))
+   (started-lock :accessor started-lock)
+   (running-lock :accessor running-lock)))
 
 (defmethod initialize-instance ((loop event-loop) &key)
   (setf (timers loop) (make-hash-table))
   (setf (started loop) nil)
-  (setf (slot-value loop 'recv-buffer-length) (find-recv-buffer-length)))
+  (setf (started-lock loop) (bt:make-lock))
+  (setf (running-lock loop) (bt:make-lock)))
 
 (defun find-recv-buffer-length ()
   (with-open-file (f "/proc/sys/net/core/rmem_default")
@@ -29,46 +34,53 @@
 	     do (incf count (parse-integer (second (ppcre:split ":" line)))))
 	  count))))
 
-(defun start (loop)
-  (let* ((efd (epoll-create1 0))
-	 (threads-count (cores-count))
-	 (sync-pipes (loop for i below (1- threads-count)
-			collect (multiple-value-bind (read-pipe write-pipe)
-				    (pipe)
-				  (list read-pipe write-pipe))))
-	 (read-pipes (loop for pipes in sync-pipes
-			collect (first pipes)))
-	 (write-pipes (loop for pipes in sync-pipes
-			 collect (second pipes))))
-    (when (= efd -1)
-      (error "epoll_create1"))
-    (setf (efd loop) efd)
-    (maphash
-     (lambda (timerfd timer)
-       (add-event efd timerfd timer))
-     (timers loop))
-    (loop for pipe in read-pipes
-       do (%add-event efd pipe +epollin+))
-    (setf (started loop) t)
-    (let* ((threads (loop for i below threads-count
-		       collect (bt:make-thread
+(defun start-loop (loop)
+  (bt:with-lock-held ((started-lock loop))
+    (when (started loop)
+      (bt:with-lock-held ((running-lock loop))
+	(return-from start-loop))))
+  (bt:with-lock-held ((running-lock loop))
+    (let* ((efd (epoll-create1 0))
+	   (threads-count (cores-count))
+	   (sync-pipes (loop for i below (1- threads-count)
+			  collect (multiple-value-bind (read-pipe write-pipe)
+				      (pipe)
+				    (list read-pipe write-pipe))))
+	   (read-pipes (loop for pipes in sync-pipes
+			  collect (first pipes)))
+	   (write-pipes (loop for pipes in sync-pipes
+			   collect (second pipes))))
+      (when (= efd -1)
+	(error "epoll_create1"))
+      (setf (efd loop) efd)
+      (maphash
+       (lambda (timerfd timer)
+	 (add-event efd timerfd timer))
+       (timers loop))
+      (loop for pipe in read-pipes
+	 do (%add-event efd pipe +epollin+))
+      (bt:with-lock-held ((started-lock loop))
+	(setf (started loop) t))
+      (let* ((threads (loop for i below threads-count
+			 collect (bt:make-thread
+				  (lambda ()
+				    (main-loop loop efd read-pipes write-pipes))
+				  :name (format nil "laap event loop ~a" i)))))
+	(unwind-protect
+	     (loop for thread in threads
+		do (let ((thread-name (bt:thread-name thread)))
+		     (handler-case
+			 (bt:join-thread thread)
+		       (error ()
+			 (push (bt:make-thread
 				(lambda ()
 				  (main-loop loop efd read-pipes write-pipes))
-				:name (format nil "laap event loop ~a" i)))))
-      (unwind-protect
-	   (loop for thread in threads
-	      do (let ((thread-name (bt:thread-name thread)))
-		   (handler-case
-		       (bt:join-thread thread)
-		     (error ()
-		       (push (bt:make-thread
-			      (lambda ()
-				(main-loop loop efd read-pipes write-pipes))
-			      :name thread-name)
-			     threads)))))
-	(progn
-	  (setf (started loop) nil)
-	  (c-close efd))))))
+				:name thread-name)
+			       threads)))))
+	  (progn
+	    (bt:with-lock-held ((started-lock loop))
+	      (setf (started loop) nil))
+	    (c-close efd)))))))
 
 (defun main-loop (loop efd sync-read-pipes sync-write-pipes)
   (let ((events (cffi:foreign-alloc '(:struct epoll-event) :count 1)))
@@ -98,10 +110,8 @@
 				    (return-from main-loop (quit-event-loop sync-write-pipes))
 				    (return-from continue)))))
 
-			  (handle-event timer loop)
+			  (handle-event timer)
 
-			  (unless (closed timer)
-			    (epoll-ctl efd +epoll-ctl-mod+ fd event))
 			  (sb-ext:with-locked-hash-table ((timers loop))
 			    (when (= (hash-table-count (timers loop)) 0)
 			      (return-from main-loop (quit-event-loop sync-write-pipes))))))))))
@@ -113,16 +123,6 @@
 	  (setf (cffi:mem-ref buf :char) 0)
 	  (c-write pipe buf 1)
 	  (c-close pipe))))
-
-(defun add-timer (loop timer)
-  (sb-ext:with-locked-hash-table ((timers loop))
-    (setf (gethash (fd timer) (timers loop)) timer))
-  (when (started loop)
-    (add-event (efd loop) (fd timer) timer)))
-
-(defun remove-timer (loop timer)
-  (sb-ext:with-locked-hash-table ((timers loop))
-    (remhash (fd timer) (timers loop))))
 
 (defun add-event (efd timerfd timer)
   (handler-case

@@ -1,2 +1,4 @@
 (defpackage #:laap/test
-  (:use #:cl #:5am))
+  (:use #:cl)
+  (:export #:run
+	   #:run-all-tests))
