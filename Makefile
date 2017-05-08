@@ -29,4 +29,4 @@ $(QL_LOCAL)/setup.lisp: $(QL_LOCAL)/quicklisp.lisp
 $(QL_LOCAL)/quicklisp.lisp:
 	@mkdir -p $(QL_LOCAL)
 	@wget --no-check-certificate https://beta.quicklisp.org/quicklisp.lisp && mv quicklisp.lisp $(QL_LOCAL)
-	@echo '4a7a5c2aebe0716417047854267397e24a44d0cce096127411e9ce9ccfeb2c17 *$(QL_LOCAL)/quicklisp.lisp' | shasum -c -
+	@echo '4a7a5c2aebe0716417047854267397e24a44d0cce096127411e9ce9ccfeb2c17 *$(QL_LOCAL)/quicklisp.lisp' | sha256sum -c -
