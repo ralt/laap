@@ -1,0 +1,11 @@
+tests:
+  image: debian:jessie
+  script:
+    - apt-get update && apt-get install -y curl sudo bzip2 make libffi6 wget pkg-config build-essential libffi-dev
+    - export LISP=sbcl
+    - curl https://raw.githubusercontent.com/luismbo/cl-travis/master/install.sh | sh
+    # This file adds `/` to ASDF tree configuration, which has a bunch of
+    # magic folders such as `/proc/1/root` which are recursive. ASDF chokes
+    # on that.
+    - rm -f /root/.config/common-lisp/source-registry.conf.d/cl-travis.conf
+    - make

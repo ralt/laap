@@ -1,1 +1,1 @@
-[![Travis CI](https://travis-ci.org/ralt/laap.svg?branch=master)](https://travis-ci.org/ralt/laap)
+[![build status](https://gitlab.com/ralt/laap/badges/gitlab-ci/build.svg)](https://gitlab.com/ralt/laap/commits/gitlab-ci)
