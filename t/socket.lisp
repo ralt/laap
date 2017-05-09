@@ -42,3 +42,12 @@
 		       #\return #\linefeed
 		       #\return #\linefeed))))
      :ip "127.0.0.1" :port 4242)))
+
+(test socket-listen (done)
+  (let ((socket (make-instance 'laap/socket:ipv4-socket)))
+    (laap/socket:listen
+     socket
+     (lambda (err res)
+       (assert (eq err nil))
+       (funcall done))
+     :ip "127.0.0.1" :port 5555)))
