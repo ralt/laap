@@ -18,6 +18,9 @@
 (defgeneric receive (socket callback &key)
   (:documentation "Receive data from a socket"))
 
+(defgeneric listen (socket callback &key)
+  (:documentation "Listen on a socket"))
+
 (defclass socket-timer (laap:timer) ())
 
 (defmethod laap:handle-error ((timer socket-timer) error)
@@ -70,29 +73,18 @@
     (laap:handle-error timer (make-condition 'error (strerror (cffi:mem-ref optval :int))))))
 
 (defmethod close ((socket ipv4-socket) callback &key)
-  (if (= (c-close (fd socket)) 0)
-      (laap:spawn callback)
-      (laap:handle-event (make-instance 'timer-socket-close :callback callback :errno errno))))
-
-(defclass timer-socket-close (socket-timer)
-  ((errno :initarg :errno :reader timer-errno)))
-
-(defmethod laap:handle-event ((timer timer-socket-close))
-  (unwind-protect
-       (funcall (laap:callback timer)
-		(make-condition 'error (strerror (timer-errno timer)))
-		nil)
-    (laap:remove-timer timer)))
+  (laap:spawn (lambda (err res)
+		(declare (ignore err res))
+		(if (= (c-close (fd socket)) 0)
+		    (funcall callback nil nil)
+		    (funcall callback (make-condition 'error (strerror errno)) nil)))))
 
 (defmethod send ((socket ipv4-socket) callback &key data)
   (let ((timer (make-instance 'timer-socket-send
 			      :fd (fd socket)
 			      :callback callback
 			      :data data)))
-    ;; We don't need to wait for the socket to be ready,
-    ;; we can write to it directly, and it will tell us
-    ;; whenever we need to wait for it again.
-    (laap:handle-event timer)))
+    (laap:add-timer timer)))
 
 (defclass timer-socket-send (socket-timer)
   ((laap:direction :initform +epollout+)
@@ -122,14 +114,10 @@
 	     (setf (data timer) (subseq (data timer) (1- sent)))))))))
 
 (defmethod receive ((socket ipv4-socket) callback &key end)
-  (let ((timer (make-instance 'timer-socket-receive
-			      :fd (fd socket)
-			      :callback callback
-			      :end-callback end)))
-    ;; We don't need to wait for the socket to be ready,
-    ;; we can read to it directly, and it will tell us
-    ;; whenever we need to wait for it again.
-    (laap:handle-event timer)))
+  (laap:add-timer (make-instance 'timer-socket-receive
+				 :fd (fd socket)
+				 :callback callback
+				 :end-callback end)))
 
 (defclass timer-socket-receive (socket-timer)
   ((laap:direction :initform +epollin+)
@@ -156,3 +144,28 @@
 		 lisp-buffer)
 	(unless (= received 0)
 	  (laap:handle-event timer))))))
+
+(defmethod listen ((socket ipv4-socket) callback &key ip port (backlog 768))
+  (cffi:with-foreign-object (inp '(:struct in-addr))
+    (cffi:with-foreign-string (cp ip)
+      (inet-aton cp inp))
+    (cffi:with-foreign-object (sockaddr '(:struct sockaddr-in))
+      (cffi:with-foreign-slots ((sin-family sin-port sin-addr sin-zero)
+				sockaddr
+				(:struct sockaddr-in))
+	(setf sin-family (socket-domain socket))
+	(setf sin-port (htons port))
+	(setf sin-addr inp))
+      (when (= (c-bind (fd socket) sockaddr (cffi:foreign-type-size '(:struct sockaddr-in))) -1)
+	(return-from listen (laap:spawn
+			     (lambda (err res)
+			       (declare (ignore err res))
+			       (funcall callback (make-condition 'error (strerror errno)) nil)))))
+      (when (= (c-listen (fd socket) backlog) -1)
+	(return-from listen (laap:spawn
+			     (lambda (err res)
+			       (declare (ignore err res))
+			       (funcall callback (make-condition 'error (strerror errno)) nil)))))
+      (laap:spawn (lambda (err res)
+		    (declare (ignore err res))
+		    (funcall callback nil nil))))))

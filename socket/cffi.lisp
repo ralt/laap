@@ -75,3 +75,12 @@
   (buf :pointer)
   (len :unsigned-int)
   (flags :int))
+
+(cffi:defcfun ("bind" c-bind) :int
+  (sockfd :int)
+  (addr :pointer)
+  (addrlen :uint))
+
+(cffi:defcfun ("listen" c-listen) :int
+  (sockfd :int)
+  (backlog :int))

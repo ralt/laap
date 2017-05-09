@@ -4,5 +4,7 @@
 	   #:connect
 	   #:close
 	   #:send
-	   #:receive)
-  (:shadow #:close))
+	   #:receive
+	   #:listen)
+  (:shadow #:close
+	   #:listen))
