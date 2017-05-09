@@ -5,6 +5,7 @@
 	   #:close
 	   #:send
 	   #:receive
-	   #:listen)
+	   #:listen
+	   #:accept)
   (:shadow #:close
 	   #:listen))

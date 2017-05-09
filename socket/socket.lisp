@@ -1,7 +1,7 @@
 (in-package #:laap/socket)
 
 (defclass socket ()
-  ((fd :reader fd)
+  ((fd :initarg :fd :reader fd)
    (domain :reader socket-domain)
    (type :reader socket-type)
    (protocol :reader socket-protocol)))
@@ -21,6 +21,9 @@
 (defgeneric listen (socket callback &key)
   (:documentation "Listen on a socket"))
 
+(defgeneric accept (socket callback &key)
+  (:documentation "Accept a connection from a socket"))
+
 (defclass socket-timer (laap:timer) ())
 
 (defmethod laap:handle-error ((timer socket-timer) error)
@@ -30,16 +33,19 @@
 
 (defclass ipv4-socket (socket) ())
 
-(defmethod initialize-instance ((socket ipv4-socket) &key)
+(defmethod initialize-instance :after ((socket ipv4-socket) &key)
   (setf (slot-value socket 'domain) +af-inet+)
   (setf (slot-value socket 'type) (logior +sock-stream+ +sock-nonblock+))
   (setf (slot-value socket 'protocol) 0)
-  (let ((socketfd (c-socket (socket-domain socket)
-			    (socket-type socket)
-			    (socket-protocol socket))))
-    (when (= socketfd -1)
-      (error (strerror errno)))
-    (setf (slot-value socket 'fd) socketfd)))
+  (if (slot-boundp socket 'fd)
+      (let ((flags (fcntl (fd socket) +f-getfl+ 0)))
+	(fcntl (fd socket) +f-setfl+ (logior flags +o-nonblock+)))
+      (let ((socketfd (c-socket (socket-domain socket)
+				(socket-type socket)
+				(socket-protocol socket))))
+	(when (= socketfd -1)
+	  (error (strerror errno)))
+	(setf (slot-value socket 'fd) socketfd))))
 
 (defmethod connect ((socket ipv4-socket) callback &key ip port)
   (let ((timer (make-instance 'timer-socket-connect :fd (fd socket) :callback callback)))
@@ -56,7 +62,7 @@
 	(when (= (c-connect (fd socket) sockaddr (cffi:foreign-type-size '(:struct sockaddr-in))) -1)
 	  (unless (= errno +einprogress+)
 	    (return-from connect (laap:handle-error timer
-						    (make-condition 'error (strerror errno)))))
+						    (strerror errno))))
 	  (laap:add-timer timer))))))
 
 (defclass timer-socket-connect (socket-timer)
@@ -70,21 +76,20 @@
       (unwind-protect
 	   (funcall (laap:callback timer) nil nil)
 	(return-from laap:handle-event (laap:remove-timer timer))))
-    (laap:handle-error timer (make-condition 'error (strerror (cffi:mem-ref optval :int))))))
+    (laap:handle-error timer (strerror (cffi:mem-ref optval :int)))))
 
 (defmethod close ((socket ipv4-socket) callback &key)
   (laap:spawn (lambda (err res)
 		(declare (ignore err res))
 		(if (= (c-close (fd socket)) 0)
 		    (funcall callback nil nil)
-		    (funcall callback (make-condition 'error (strerror errno)) nil)))))
+		    (funcall callback (strerror errno) nil)))))
 
 (defmethod send ((socket ipv4-socket) callback &key data)
-  (let ((timer (make-instance 'timer-socket-send
-			      :fd (fd socket)
-			      :callback callback
-			      :data data)))
-    (laap:add-timer timer)))
+  (laap:add-timer (make-instance 'timer-socket-send
+				 :fd (fd socket)
+				 :callback callback
+				 :data data)))
 
 (defclass timer-socket-send (socket-timer)
   ((laap:direction :initform +epollout+)
@@ -103,8 +108,7 @@
 	       (return-from laap:handle-event
 		 (if (= errno +ewouldblock+)
 		     (laap:add-timer timer)
-		     (laap:handle-error timer (make-condition 'error
-							      (strerror errno))))))
+		     (laap:handle-error timer (strerror errno)))))
 	     ;; :)
 	     (when (= sent data-length)
 	       (unwind-protect
@@ -131,8 +135,7 @@
 	(return-from laap:handle-event
 	  (if (= errno +ewouldblock+)
 	      (laap:add-timer timer)
-	      (laap:handle-error timer (make-condition 'error
-						       (strerror errno))))))
+	      (laap:handle-error timer (strerror errno)))))
       ;; :)
       (let ((lisp-buffer (make-array received :element-type '(unsigned-byte 8))))
 	(loop for i below received
@@ -160,12 +163,33 @@
 	(return-from listen (laap:spawn
 			     (lambda (err res)
 			       (declare (ignore err res))
-			       (funcall callback (make-condition 'error (strerror errno)) nil)))))
+			       (funcall callback (strerror errno) nil)))))
       (when (= (c-listen (fd socket) backlog) -1)
 	(return-from listen (laap:spawn
 			     (lambda (err res)
 			       (declare (ignore err res))
-			       (funcall callback (make-condition 'error (strerror errno)) nil)))))
+			       (funcall callback (strerror errno) nil)))))
       (laap:spawn (lambda (err res)
 		    (declare (ignore err res))
 		    (funcall callback nil nil))))))
+
+(defmethod accept ((socket ipv4-socket) callback &key)
+  (laap:add-timer (make-instance 'timer-socket-accept
+				 :fd (fd socket)
+				 :callback callback)))
+
+(defclass timer-socket-accept (socket-timer)
+  ((laap:direction :initform +epollin+)))
+
+(defmethod laap:handle-event ((timer timer-socket-accept))
+  (let ((accepted-sockfd (c-accept (laap:fd timer) (cffi:null-pointer) (cffi:null-pointer) 0)))
+    (if (= accepted-sockfd -1)
+	(if (= errno +eagain+)
+	    (laap:add-timer timer)
+	    (unwind-protect
+		 (laap:handle-error timer (strerror errno))
+	      (laap:remove-timer timer)))
+	(unwind-protect
+	     (funcall (laap:callback timer) nil (make-instance 'ipv4-socket
+							       :fd accepted-sockfd))
+	  (laap:remove-timer timer)))))

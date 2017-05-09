@@ -51,3 +51,22 @@
        (assert (eq err nil))
        (funcall done))
      :ip "127.0.0.1" :port 5555)))
+
+(test socket-accept (done)
+  (let ((socket (make-instance 'laap/socket:ipv4-socket)))
+    (laap/socket:listen
+     socket
+     (lambda (err res)
+       (when err (error err))
+       (laap/socket:accept
+	socket
+	(lambda (err client-socket)
+	  (assert (eq err nil))
+	  (laap/socket:close
+	   client-socket
+	   (lambda (err res)
+	     (laap/socket:close
+	      socket
+	      (lambda (err res)
+		(funcall done))))))))
+     :ip "127.0.0.1" :port 5556)))

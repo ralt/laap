@@ -90,31 +90,30 @@
 	      (when (= (hash-table-count (timers loop)) 0)
 		(return-from main-loop (quit-event-loop sync-write-pipes))))
 	    (let ((n (epoll-wait efd events 1 -1)))
-	      (when (> n 0)
-		(loop for i below n
-		   do (block continue
-			(let* ((event (cffi:mem-aref events '(:struct epoll-event) i))
-			       (event-events (getf event 'events))
-			       (fd (ldb (byte 32 0) (getf event 'data)))
-			       (timer (sb-ext:with-locked-hash-table ((timers loop))
-					(gethash fd (timers loop)))))
-			  (when (member fd sync-read-pipes)
-			    (c-close fd)
-			    (return-from main-loop))
-			  (when (or (> (logand event-events +epollerr+) 0)
-				    (> (logand event-events +epollhup+) 0))
-			    (unwind-protect
-				 (handle-error timer (make-condition 'error "epoll error"))
-			      (sb-ext:with-locked-hash-table ((timers loop))
-				(if (= (hash-table-count (timers loop)) 0)
-				    (return-from main-loop (quit-event-loop sync-write-pipes))
-				    (return-from continue)))))
+	      (when (= n 1)
+		(block continue
+		  (let* ((event (cffi:mem-aref events '(:struct epoll-event) 0))
+			 (event-events (getf event 'events))
+			 (fd (ldb (byte 32 0) (getf event 'data)))
+			 (timer (sb-ext:with-locked-hash-table ((timers loop))
+				  (gethash fd (timers loop)))))
+		    (when (or (> (logand event-events +epollerr+) 0)
+			      (> (logand event-events +epollhup+) 0))
+		      (unwind-protect
+			   (handle-error timer (make-condition 'error "epoll error"))
+			(sb-ext:with-locked-hash-table ((timers loop))
+			  (if (= (hash-table-count (timers loop)) 0)
+			      (return-from main-loop (quit-event-loop sync-write-pipes))))))
 
-			  (handle-event timer)
+		    (when (member fd sync-read-pipes)
+		      (c-close fd)
+		      (return-from main-loop))
 
-			  (sb-ext:with-locked-hash-table ((timers loop))
-			    (when (= (hash-table-count (timers loop)) 0)
-			      (return-from main-loop (quit-event-loop sync-write-pipes))))))))))
+		    (handle-event timer)
+
+		    (sb-ext:with-locked-hash-table ((timers loop))
+		      (when (= (hash-table-count (timers loop)) 0)
+			(return-from main-loop (quit-event-loop sync-write-pipes)))))))))
       (cffi:foreign-free events))))
 
 (defun quit-event-loop (sync-write-pipes)
