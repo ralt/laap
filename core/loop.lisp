@@ -31,7 +31,7 @@
 	  (loop for line = (read-line f nil 'eof)
 	     until (eq line 'eof)
 	     when (ppcre:scan "^cpu cores" line)
-	     do (incf count (parse-integer (second (ppcre:split ":" line)))))
+	     do (incf count)))))
 	  count))))
 
 (defun start-loop (loop)
