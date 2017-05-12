@@ -12,5 +12,9 @@
 			     (:file "loop" :depends-on ("package" "cffi" "timer"))))
 	       (:module "socket"
 		:components ((:file "package")
-			     (:file "socket" :depends-on ("cffi"))
-			     (:file "cffi" :depends-on ("package"))))))
+			     (:file "socket" :depends-on ("cffi" "package"))
+			     (:file "cffi" :depends-on ("package"))))
+	       (:module "fs"
+		:components ((:file "package")
+			     (:file "cffi" :depends-on ("package"))
+			     (:file "fs" :depends-on ("cffi" "package"))))))
