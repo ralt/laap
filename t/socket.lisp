@@ -2,7 +2,7 @@
 
 (test socket-creation (done)
   (make-instance 'laap/socket:ipv4-socket)
-  (done))
+  (funcall done))
 
 (test socket-connection (done)
   (let ((socket (make-instance 'laap/socket:ipv4-socket)))
