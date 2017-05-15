@@ -23,14 +23,17 @@
   (bt:make-thread
    (lambda ()
      (bt:with-lock-held ((queue-lock *thread-pool*))
-       (loop
-	  (loop for action = (pop (queue *thread-pool*))
-	     until (eq action nil)
-	     when (eq action t)
-	     do (return-from start-thread-pool (loop for thread in (event-loop-threads *thread-pool*)
-						  do (bt:interrupt-thread thread (lambda ()))))
-	     do (execute action))
-	  (bt:condition-wait (event *thread-pool*) (queue-lock *thread-pool*)))))))
+       (block loop
+	 (loop
+	    (loop for action = (pop (queue *thread-pool*))
+	       until (eq action nil)
+	       when (eq action t)
+	       do (return-from loop (progn
+				      (loop for thread in (event-loop-threads *thread-pool*)
+					 do (bt:interrupt-thread thread (lambda ())))
+				      (c-close (efd *loop*))))
+	       do (execute action))
+	    (bt:condition-wait (event *thread-pool*) (queue-lock *thread-pool*))))))))
 
 (defun add-to-pool (action)
   (bt:with-lock-held ((queue-lock *thread-pool*))

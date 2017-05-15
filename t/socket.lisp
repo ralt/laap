@@ -4,8 +4,6 @@
   (make-instance 'laap/socket:ipv4-socket)
   (done))
 
-(hunchentoot:start (make-instance 'hunchentoot:easy-acceptor :port 4242))
-
 (test socket-connection (done)
   (let ((socket (make-instance 'laap/socket:ipv4-socket)))
     (laap/socket:connect
