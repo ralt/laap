@@ -3,12 +3,13 @@
 ;;; Run with: ./buildapp --output bin/foo --eval '(declaim (optimize (speed 3)))' --asdf-tree ~/quicklisp/ --load-system laap-test --entry laap/test::main --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format t "~A~%" c)))'
 ;;; for strace runs et al.
 (defun main (&rest args)
-  (let ((socket (make-instance 'laap/socket:ipv4-socket)))
-    (laap/socket:listen
-     socket
-     (accept-loop socket)
-     :ip "127.0.0.1" :port 5560))
-  (laap:start))
+  (declare (ignore args))
+  (laap:with-event-loop
+    (let ((socket (make-instance 'laap/socket:ipv4-socket)))
+      (laap/socket:listen
+       socket
+       (accept-loop socket)
+       :ip "127.0.0.1" :port 5560))))
 
 (defun accept-loop (socket)
   (let ()
@@ -30,9 +31,14 @@
 	 (laap/socket:close
 	  client-socket
 	  #'laap:noop))
-       :data (babel:string-to-octets (format nil "foo~%"))))))
+       :data (babel:string-to-octets (format nil
+					     "HTTP/1.0 200 OK~c~cContent-Length: 6~c~c~c~cPong!~c~c~c"
+					     #\return #\linefeed
+					     #\return #\linefeed #\return #\linefeed
+					     #\linefeed
+					     #\return #\linefeed))))))
 
-(defun http-request ()
+(defun http-request (done)
   (let ((socket (make-instance 'laap/socket:ipv4-socket)))
     (laap/socket:connect
      socket

@@ -1,6 +1,6 @@
 (defpackage #:laap
   (:use #:cl)
-  (:export #:start
+  (:export #:with-event-loop
 	   #:delay
 	   #:spawn
 	   #:timer

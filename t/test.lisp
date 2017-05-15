@@ -9,27 +9,27 @@
 
 (defun run-all-tests ()
   (let ((*results* (make-hash-table)))
-    (maphash (lambda (k v)
-	       (handler-case
-		   (progn
-		     (funcall v (lambda ()))
-		     (setf (gethash k *results*) t))
-		 (error (e)
-		   (setf (gethash k *results*) e))))
-	     *tests*)
-    (laap:start)
+    (laap:with-event-loop
+      (maphash (lambda (k v)
+		 (handler-case
+		     (progn
+		       (funcall v (lambda ()))
+		       (setf (gethash k *results*) t))
+		   (error (e)
+		     (setf (gethash k *results*) e))))
+	       *tests*))
     (check-results)))
 
 (defun run (test)
   (let ((*results* (make-hash-table))
 	(test-callback (gethash test *tests*)))
-    (handler-case
-	(progn
-	  (funcall test-callback (lambda ()))
-	  (setf (gethash test *results*) t))
-      (error (e)
-	(setf (gethash test *results*) e)))
-    (laap:start)
+    (laap:with-event-loop
+      (handler-case
+	  (progn
+	    (funcall test-callback (lambda ()))
+	    (setf (gethash test *results*) t))
+	(error (e)
+	  (setf (gethash test *results*) e))))
     (check-results)))
 
 (defun check-results ()

@@ -1,9 +1,17 @@
 (in-package #:laap)
 
-(defvar *loop* (make-instance 'event-loop))
+(defvar *thread-pool* nil)
+(defvar *loop* nil)
 
-(defun start ()
-  (start-loop *loop*))
+(defmacro with-event-loop (&body body)
+  `(let* ((*thread-pool* (make-instance 'thread-pool))
+	  (*loop* (make-instance 'event-loop))
+	  (bt:*default-special-bindings* `((*thread-pool* . ,*thread-pool*)
+					   (*loop* . ,*loop*))))
+     (progn ,@body)
+     (let ((thread-pool-thread (start-thread-pool)))
+       (start-event-loop)
+       (bt:join-thread thread-pool-thread))))
 
 (defun noop (err res)
   (declare (ignore err res)))

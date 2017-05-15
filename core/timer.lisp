@@ -13,14 +13,13 @@
   (:documentation "Handles an event for a file descriptor"))
 
 (defun add-timer (timer)
-  (sb-ext:with-locked-hash-table ((timers *loop*))
+  (bt:with-lock-held ((timers-lock *loop*))
     (setf (gethash (fd timer) (timers *loop*)) timer))
-  (bt:with-lock-held ((started-lock *loop*))
-    (when (started *loop*)
-      (add-event (efd *loop*) (fd timer) timer))))
+  (when (started *loop*)
+    (add-event (efd *loop*) (fd timer) timer)))
 
 (defun remove-timer (timer)
-  (sb-ext:with-locked-hash-table ((timers *loop*))
+  (bt:with-lock-held ((timers-lock *loop*))
     (unless (eq (gethash (fd timer) (timers *loop*))
 		timer)
       (return-from remove-timer))
@@ -44,7 +43,7 @@
        (funcall (callback timer) nil nil)
     (progn
       (setf (closed timer) t)
-      (sb-ext:with-locked-hash-table ((timers *loop*))
+      (bt:with-lock-held ((timers-lock *loop*))
 	(remhash (fd timer) (timers *loop*)))
       (c-close (fd timer)))))
 
