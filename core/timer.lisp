@@ -42,9 +42,7 @@
   (unwind-protect
        (funcall (callback timer) nil nil)
     (progn
-      (setf (closed timer) t)
-      (bt:with-lock-held ((timers-lock *loop*))
-	(remhash (fd timer) (timers *loop*)))
+      (remove-timer timer)
       (c-close (fd timer)))))
 
 (defun add-timer-in (seconds callback)

@@ -67,8 +67,8 @@
 		      (unwind-protect
 			   (handle-error timer (make-condition 'error "epoll error"))
 			(bt:with-lock-held ((timers-lock *loop*))
-			  (if (= (hash-table-count (timers *loop*)) 0)
-			      (return-from main-loop (quit-event-loop))))))
+			  (when (= (hash-table-count (timers *loop*)) 0)
+			    (return-from main-loop (quit-event-loop))))))
 
 		    (handle-event timer)
 

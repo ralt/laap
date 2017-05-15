@@ -5,11 +5,8 @@
 (defun main (&rest args)
   (declare (ignore args))
   (laap:with-event-loop
-    (let ((socket (make-instance 'laap/socket:ipv4-socket)))
-      (laap/socket:listen
-       socket
-       (accept-loop socket)
-       :ip "127.0.0.1" :port 5560))))
+    (http-request (lambda (result)
+		    (format t "~a" result)))))
 
 (defun accept-loop (socket)
   (let ()
@@ -56,7 +53,7 @@
 	       (setf result (concatenate 'string result (babel:octets-to-string res))))
 	     :end (lambda (err res)
 		    (laap/socket:close socket (lambda (err res)
-						(funcall done)))))))
+						(funcall done result)))))))
 	:data (babel:string-to-octets
 	       (format nil "GET / HTTP/1.1~c~cHost: 127.0.0.1:4242~c~cConnection: close~c~c~c~c"
 		       #\return #\linefeed

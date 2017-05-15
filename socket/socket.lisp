@@ -146,7 +146,9 @@
 		 nil
 		 lisp-buffer)
 	(unless (= received 0)
-	  (laap:handle-event timer))))))
+	  (unwind-protect
+	       (laap:handle-event timer)
+	    (laap:remove-timer timer)))))))
 
 (defmethod listen ((socket ipv4-socket) callback &key ip port (backlog 768))
   (cffi:with-foreign-object (inp '(:struct in-addr))
