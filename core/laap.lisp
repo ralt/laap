@@ -11,7 +11,9 @@
      (progn ,@body)
      (let ((thread-pool-thread (start-thread-pool)))
        (start-event-loop)
-       (bt:join-thread thread-pool-thread))))
+       (bt:join-thread thread-pool-thread)
+       (dolist (thread (event-loop-threads *thread-pool*))
+	 (bt:join-thread thread)))))
 
 (defun noop (err res)
   (declare (ignore err res)))

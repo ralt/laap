@@ -29,8 +29,8 @@
 	       until (eq action nil)
 	       when (eq action t)
 	       do (return-from loop (progn
-				      (loop for thread in (event-loop-threads *thread-pool*)
-					 do (bt:interrupt-thread thread (lambda ())))
+				      (dolist (thread (event-loop-threads *thread-pool*))
+					(bt:interrupt-thread thread (lambda ())))
 				      (c-close (efd *loop*))))
 	       do (execute action))
 	    (bt:condition-wait (event *thread-pool*) (queue-lock *thread-pool*))))))))
