@@ -1,4 +1,7 @@
 (defpackage #:laap/fs
   (:use #:cl)
-  (:export #:open)
-  (:shadow #:open))
+  (:export #:open
+	   #:file
+	   #:read)
+  (:shadow #:open
+	   #:read))

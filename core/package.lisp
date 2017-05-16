@@ -12,4 +12,5 @@
 	   #:direction
 	   #:fd
 	   #:noop
+	   #:with-blocking-thread
 	   #:*recv-buffer-length*))
