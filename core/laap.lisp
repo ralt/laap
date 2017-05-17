@@ -12,8 +12,10 @@
      (let ((thread-pool-thread (start-thread-pool)))
        (start-event-loops)
        (bt:join-thread thread-pool-thread)
-       (dolist (thread (threads *thread-pool*))
-	 (bt:join-thread thread)))))
+       (maphash (lambda (thread props)
+		  (declare (ignore props))
+		  (bt:join-thread thread))
+		(threads *thread-pool*)))))
 
 (defun noop (err res)
   (declare (ignore err res)))
