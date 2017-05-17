@@ -125,9 +125,9 @@
 	(action (gensym))
 	(should-exit (gensym))
 	(current-thread (gensym)))
-    `(let ((,callback (lambda () (block ,name ,@body)))
-	   (,current-thread (bt:current-thread))
-	   (,action (make-instance 'blocking-action :thread ,current-thread)))
+    `(let* ((,callback (lambda () (block ,name ,@body)))
+	    (,current-thread (bt:current-thread))
+	    (,action (make-instance 'blocking-action :thread ,current-thread)))
        (add-to-queue ,action)
        (unwind-protect
 	    (funcall ,callback)
