@@ -1,12 +1,20 @@
 (in-package #:laap/test)
 
-;;; Run with: ./buildapp --output bin/foo --eval '(declaim (optimize (speed 3)))' --asdf-tree ~/quicklisp/ --load-system laap-test --entry laap/test::main --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format t "~A~%" c)))'
+;;; Run with: ./buildapp --output bin/foo --eval '(declaim (optimize (speed 3)))' --asdf-tree ~/quicklisp/ --load-system laap-test --entry laap/test::http-client --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format t "~A~%" c)))'
 ;;; for strace runs et al.
-(defun main (&rest args)
+(defun http-client (&rest args)
   (declare (ignore args))
   (laap:with-event-loop
     (http-request (lambda (result)
 		    (format t "~a" result)))))
+
+;;; ./buildapp --output bin/foo --eval '(declaim (optimize (speed 3)))' --asdf-tree ~/quicklisp/ --load-system laap-test --entry laap/test::http-server --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format t "~A~%" c)))'
+(defun http-server (&rest args)
+  (declare (ignore args))
+  (laap:with-event-loop
+    (let ((socket (make-instance 'laap/socket:ipv4-socket)))
+      (laap/socket:listen socket (accept-loop socket)
+			  :ip "127.0.0.1" :port 9092))))
 
 (defun accept-loop (socket)
   (let ()
@@ -21,19 +29,31 @@
     (lambda (err client-socket)
       (laap:spawn (accept-loop socket))
       (when err (error err))
-      (laap/socket:send
-       client-socket
-       (lambda (err res)
+      (laap/fs:open
+       "/etc/hosts"
+       (lambda (err file)
 	 (when err (error err))
-	 (laap/socket:close
-	  client-socket
-	  #'laap:noop))
-       :data (babel:string-to-octets (format nil
-					     "HTTP/1.0 200 OK~c~cContent-Length: 6~c~c~c~cPong!~c~c~c"
-					     #\return #\linefeed
-					     #\return #\linefeed #\return #\linefeed
-					     #\linefeed
-					     #\return #\linefeed))))))
+	 (laap/fs:read
+	  file
+	  (lambda (err hosts)
+	    (when err (error err))
+	    (laap/socket:send
+	     client-socket
+	     (lambda (err res)
+	       (declare (ignore res))
+	       (when err (error err))
+	       (laap/socket:close
+		client-socket
+		#'laap:noop))
+	     :data (babel:string-to-octets
+		    (format nil
+			    "HTTP/1.0 200 OK~c~cContent-Length: ~a~c~c~c~c~a~c~c"
+			    #\return #\linefeed
+			    (length hosts)
+			    #\return #\linefeed #\return #\linefeed
+			    (babel:octets-to-string hosts)
+			    #\return #\linefeed))))
+	  :count 4096))))))
 
 (defun http-request (done)
   (let ((socket (make-instance 'laap/socket:ipv4-socket)))
