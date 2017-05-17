@@ -1,19 +1,23 @@
 (in-package #:laap)
 
+(defvar *thread-should-exit* nil)
+
 (defclass thread-pool ()
   ((event :accessor event)
    (queue :accessor queue :initform nil)
    (lock :accessor lock)
    (threads :accessor threads)
    (max-event-loops :accessor max-event-loops)
-   (action-queue :accessor action-queue)))
+   (action-queue :accessor action-queue)
+   (action-queue-lock :accessor action-queue-lock)))
 
 (defmethod initialize-instance ((pool thread-pool) &key)
   (setf (queue pool) nil)
   (setf (lock pool) (bt:make-lock))
   (setf (event pool) (bt:make-condition-variable))
   (setf (threads pool) (make-hash-table :test 'eq))
-  (setf (action-queue pool) (make-hash-table :test 'eq)))
+  (setf (action-queue pool) (make-hash-table :test 'eq))
+  (setf (action-queue-lock pool) (bt:make-lock)))
 
 (defclass action () ())
 
@@ -40,7 +44,8 @@
 
 (defun add-to-queue (action)
   (bt:with-lock-held ((lock *thread-pool*))
-    (setf (gethash action (action-queue *thread-pool*)) (make-instance 'action-queue-item))
+    (bt:with-lock-held ((action-queue-lock *thread-pool*))
+      (setf (gethash action (action-queue *thread-pool*)) (make-instance 'action-queue-item)))
     (setf (queue *thread-pool*) (append (queue *thread-pool*) (list action))))
   (bt:condition-notify (event *thread-pool*)))
 
@@ -58,19 +63,22 @@
   (setf (event item) (bt:make-condition-variable)))
 
 (defun wait-from-action-queue (action)
-  (let ((action-item (gethash action (action-queue *thread-pool*))))
-    (bt:with-lock-held ((lock action-item))
-      (loop
-	 (progn
-	   (when (slot-boundp action-item 'result)
-	     (return-from wait-from-action-queue
-	       (progn
-		 (remhash action (action-queue *thread-pool*))
-		 (result action-item))))
-	   (bt:condition-wait (event action-item) (lock action-item)))))))
+  (let ((action-item (bt:with-lock-held ((action-queue-lock *thread-pool*))
+		       (gethash action (action-queue *thread-pool*)))))
+    (unwind-protect
+	 (bt:with-lock-held ((lock action-item))
+	   (loop
+	      (progn
+		(when (slot-boundp action-item 'result)
+		  (return-from wait-from-action-queue
+		    (result action-item)))
+		(bt:condition-wait (event action-item) (lock action-item)))))
+      (bt:with-lock-held ((action-queue-lock *thread-pool*))
+	(remhash action (action-queue *thread-pool*))))))
 
 (defun add-to-action-queue (action value)
-  (let ((action-item (gethash action (action-queue *thread-pool*))))
+  (let ((action-item (bt:with-lock-held ((action-queue-lock *thread-pool*))
+		       (gethash action (action-queue *thread-pool*)))))
     (bt:with-lock-held ((lock action-item))
       (setf (result action-item) value))
     (bt:condition-notify (event action-item))))
@@ -83,7 +91,8 @@
 
 (defmethod execute ((action new-thread-action))
   (let ((bt:*default-special-bindings* `((*thread-pool* . ,*thread-pool*)
-					 (*loop* . ,*loop*))))
+					 (*loop* . ,*loop*)
+					 (*thread-should-exit* . nil))))
     (setf (gethash (bt:make-thread
 		    (callback action))
 		   (threads *thread-pool*))
@@ -100,7 +109,7 @@
   (let ((event-loop-threads 0))
     (maphash (lambda (thread props)
 	       (declare (ignore thread))
-	       (when (> (blocking props) 0)
+	       (when (= (blocking props) 0)
 		 (incf event-loop-threads)))
 	     (threads *thread-pool*))
     (when (= event-loop-threads 0)
@@ -111,28 +120,30 @@
   ((thread :initarg :thread :reader thread)))
 
 (defmethod execute ((action unblocking-action))
+  (decf (blocking (gethash (thread action) (threads *thread-pool*))))
   (let ((event-loop-threads 0))
     (maphash (lambda (thread props)
 	       (declare (ignore thread))
-	       (when (> (blocking props) 0)
+	       (when (= (blocking props) 0)
 		 (incf event-loop-threads)))
 	     (threads *thread-pool*))
-    (decf (blocking (gethash (thread action) (threads *thread-pool*))))
-    (add-to-action-queue action (= event-loop-threads (max-event-loops *thread-pool*)))))
+    (if (and (= (blocking (gethash (thread action) (threads *thread-pool*))) 0)
+	     (> event-loop-threads (max-event-loops *thread-pool*)))
+	(progn
+	  (remhash (thread action) (threads *thread-pool*))
+	  (add-to-action-queue action t))
+	(add-to-action-queue action nil))))
 
 (defmacro with-blocking-thread (name &body body)
-  (let ((callback (gensym))
+  (let ((current-thread (gensym))
 	(action (gensym))
-	(should-exit (gensym))
-	(current-thread (gensym)))
-    `(let* ((,callback (lambda () (block ,name ,@body)))
-	    (,current-thread (bt:current-thread))
-	    (,action (make-instance 'blocking-action :thread ,current-thread)))
-       (add-to-queue ,action)
+	(should-exit (gensym)))
+    `(let ((,current-thread (bt:current-thread)))
+       (add-to-queue (make-instance 'blocking-action :thread ,current-thread))
        (unwind-protect
-	    (funcall ,callback)
+	    (funcall (lambda () (block ,name ,@body)))
 	 (let ((,action (make-instance 'unblocking-action :thread ,current-thread)))
 	   (add-to-queue ,action)
 	   (let ((,should-exit (wait-from-action-queue ,action)))
 	     (when ,should-exit
-	       (pthread-exit (cffi:null-pointer)))))))))
+	       (setf *thread-should-exit* t))))))))

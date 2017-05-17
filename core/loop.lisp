@@ -52,6 +52,7 @@
   (let ((events (cffi:foreign-alloc '(:struct epoll-event) :count 1)))
     (unwind-protect
 	 (loop
+	    (when *thread-should-exit* (return-from main-loop))
 	    (bt:with-lock-held ((timers-lock *loop*))
 	      (when (= (hash-table-count (timers *loop*)) 0)
 		(return-from main-loop (quit-event-loop))))
@@ -67,11 +68,15 @@
 			      (> (logand event-events +epollhup+) 0))
 		      (unwind-protect
 			   (handle-error timer (make-condition 'error "epoll error"))
-			(bt:with-lock-held ((timers-lock *loop*))
-			  (when (= (hash-table-count (timers *loop*)) 0)
-			    (return-from main-loop (quit-event-loop))))))
+			(progn
+			  (when *thread-should-exit* (return-from main-loop))
+			  (bt:with-lock-held ((timers-lock *loop*))
+			    (when (= (hash-table-count (timers *loop*)) 0)
+			      (return-from main-loop (quit-event-loop)))))))
 
 		    (handle-event timer)
+
+		    (when *thread-should-exit* (return-from main-loop))
 
 		    (bt:with-lock-held ((timers-lock *loop*))
 		      (when (= (hash-table-count (timers *loop*)) 0)
