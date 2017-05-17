@@ -32,7 +32,7 @@
 	     do (incf count))
 	  count))))
 
-(defun start-event-loop ()
+(defun start-event-loops ()
   (let* ((efd (epoll-create1 0))
 	 (threads-count (cores-count)))
     (when (= efd -1)
@@ -43,9 +43,10 @@
        (add-event efd timerfd timer))
      (timers *loop*))
     (setf (started *loop*) t)
+    (setf (max-event-loops *thread-pool*) threads-count)
     (loop for i below threads-count
-       do (add-event-loop-thread (lambda ()
-				   (main-loop efd))))))
+       do (add-thread (lambda ()
+			(main-loop efd))))))
 
 (defun main-loop (efd)
   (let ((events (cffi:foreign-alloc '(:struct epoll-event) :count 1)))
