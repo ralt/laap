@@ -87,7 +87,7 @@
     (setf (gethash (bt:make-thread
 		    (callback action))
 		   (threads *thread-pool*))
-	  (make-instance 'thread-properties :blocking nil))))
+	  (make-instance 'thread-properties :blocking 0))))
 
 (defun quit-event-loop ()
   (add-to-queue t))
@@ -96,11 +96,11 @@
   ((thread :initarg :thread :reader thread)))
 
 (defmethod execute ((action blocking-action))
-  (setf (blocking (gethash (thread action) (threads *thread-pool*))) t)
+  (incf (blocking (gethash (thread action) (threads *thread-pool*))))
   (let ((event-loop-threads 0))
     (maphash (lambda (thread props)
 	       (declare (ignore thread))
-	       (when (not (blocking props))
+	       (when (> (blocking props) 0)
 		 (incf event-loop-threads)))
 	     (threads *thread-pool*))
     (when (= event-loop-threads 0)
@@ -111,13 +111,13 @@
   ((thread :initarg :thread :reader thread)))
 
 (defmethod execute ((action unblocking-action))
-  (setf (blocking (gethash (thread action) (threads *thread-pool*))) nil)
   (let ((event-loop-threads 0))
     (maphash (lambda (thread props)
 	       (declare (ignore thread))
-	       (when (not (blocking props))
+	       (when (> (blocking props) 0)
 		 (incf event-loop-threads)))
 	     (threads *thread-pool*))
+    (decf (blocking (gethash (thread action) (threads *thread-pool*))))
     (add-to-action-queue action (= event-loop-threads (max-event-loops *thread-pool*)))))
 
 (defmacro with-blocking-thread (name &body body)
