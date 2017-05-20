@@ -75,7 +75,7 @@
 		    (laap/socket:close socket (lambda (err res)
 						(funcall done result)))))))
 	:data (babel:string-to-octets
-	       (format nil "GET / HTTP/1.1~c~cHost: 127.0.0.1:4242~c~cConnection: close~c~c~c~c"
+	       (format nil "GET / HTTP/1.1~c~cHost: 127.0.0.1~c~cConnection: close~c~c~c~c"
 		       #\return #\linefeed
 		       #\return #\linefeed
 		       #\return #\linefeed
