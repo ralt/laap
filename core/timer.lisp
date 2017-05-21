@@ -46,7 +46,7 @@
       (c-close (fd timer)))))
 
 (defun add-timer-in (seconds callback)
-  (let ((timerfd (timerfd-create +clock-monotonic+ 0)))
+  (let ((timerfd (timerfd-create +clock-monotonic+ +tfd-cloexec+)))
     (when (= timerfd -1)
       (error (strerror errno)))
     (multiple-value-bind (integer remaining)

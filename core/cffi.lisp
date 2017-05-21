@@ -76,6 +76,8 @@
 ;;; timers
 (defconstant +clock-monotonic+ 1)
 
+(defconstant +tfd-cloexec+ +o-cloexec+)
+
 (cffi:defctype time-t :long)
 
 (cffi:defcstruct timespec
