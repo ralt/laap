@@ -96,26 +96,25 @@
    (data :initarg :data :accessor data)))
 
 (defmethod laap:handle-event ((timer timer-socket-send))
-  (let ((flags +msg-nosignal+))
-    (loop
-       (let* ((data-length (length (data timer))))
-	 (cffi:with-foreign-object (buf :char data-length)
-	   (loop for i below data-length
-	      do (setf (cffi:mem-aref buf :char i) (elt (data timer) i)))
-	   (let ((sent (c-send (laap:fd timer) buf data-length flags)))
-	     ;; :(
-	     (when (= sent -1)
-	       (return-from laap:handle-event
-		 (if (= errno +ewouldblock+)
-		     (laap:add-timer timer)
-		     (laap:handle-error timer (strerror errno)))))
-	     ;; :)
-	     (when (= sent data-length)
-	       (unwind-protect
-		    (funcall (laap:callback timer) nil nil)
-		 (return-from laap:handle-event (laap:remove-timer timer))))
-	     ;; ¯\_(ツ)_/¯
-	     (setf (data timer) (subseq (data timer) (1- sent)))))))))
+  (loop
+     (let* ((data-length (length (data timer))))
+       (cffi:with-foreign-object (buf :char data-length)
+	 (loop for i below data-length
+	    do (setf (cffi:mem-aref buf :char i) (elt (data timer) i)))
+	 (let ((sent (c-send (laap:fd timer) buf data-length 0)))
+	   ;; :(
+	   (when (= sent -1)
+	     (return-from laap:handle-event
+	       (if (= errno +ewouldblock+)
+		   (laap:add-timer timer)
+		   (laap:handle-error timer (strerror errno)))))
+	   ;; :)
+	   (when (= sent data-length)
+	     (unwind-protect
+		  (funcall (laap:callback timer) nil nil)
+	       (return-from laap:handle-event (laap:remove-timer timer))))
+	   ;; ¯\_(ツ)_/¯
+	   (setf (data timer) (subseq (data timer) (1- sent))))))))
 
 (defmethod receive ((socket ipv4-socket) callback &key end)
   (laap:add-timer (make-instance 'timer-socket-receive
