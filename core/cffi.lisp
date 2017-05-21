@@ -2,7 +2,7 @@
 
 ;;; open/close
 (defconstant +o-nonblock+ #o00004000)
-(defconstant +o-cloexec+ #o02000000)
+(defconstant +o-cloexec+ 524288)
 
 (cffi:defcfun ("write" c-write) :int
   (fd :int)
@@ -42,6 +42,8 @@
 ;;; epoll
 (cffi:defcfun ("epoll_create1" epoll-create1) :int
   (flags :int))
+
+(defconstant +epoll-cloexec+ +o-cloexec+)
 
 (defconstant +epoll-ctl-add+ 1)
 (defconstant +epoll-ctl-del+ 2)

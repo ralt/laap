@@ -33,7 +33,7 @@
 	  count))))
 
 (defun start-event-loops ()
-  (let* ((efd (epoll-create1 0))
+  (let* ((efd (epoll-create1 +epoll-cloexec+))
 	 (threads-count (cores-count)))
     (when (= efd -1)
       (error "epoll_create1"))
