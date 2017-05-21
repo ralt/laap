@@ -97,3 +97,9 @@
 (cffi:defcfun ("timerfd_gettime" timerfd-gettime) :int
   (fd :int)
   (curr-value :pointer))
+
+(defconstant +sigpipe+ 13)
+
+(cffi:defcfun ("signal" c-signal) :pointer
+  (signum :int)
+  (handler :pointer))
