@@ -16,12 +16,14 @@ the vector ALPHABET.
 		 (cl:aref alphabet (random alphabet-length)))
 	finally (return id)))
 
-(defvar *temporary-empty-file* (format nil "/tmp/~a" (random-string)))
-(open *temporary-empty-file* :direction :probe :if-does-not-exist :create)
+(defun temporary-file ()
+  (let ((f (format nil "/tmp/~a" (random-string))))
+    (close (open f :direction :probe :if-does-not-exist :create))
+    f))
 
 (test file-read-empty (done)
   (laap/fs:open
-   *temporary-empty-file*
+   (temporary-file)
    (lambda (err file)
      (when err (error err))
      (laap/fs:read
@@ -32,8 +34,8 @@ the vector ALPHABET.
 	(funcall done))
       :count 4096))))
 
-(defvar *temporary-file* (format nil "/tmp/~a" (random-string)))
-(with-open-file (f *temporary-file*
+(defvar *temporary-file-foo* (format nil "/tmp/~a" (random-string)))
+(with-open-file (f *temporary-file-foo*
 		   :direction :output
 		   :if-does-not-exist :create
 		   :if-exists :overwrite)
@@ -41,7 +43,7 @@ the vector ALPHABET.
 
 (test file-read (done)
   (laap/fs:open
-   *temporary-file*
+   *temporary-file-foo*
    (lambda (err file)
      (when err (error err))
      (laap/fs:read
@@ -51,5 +53,26 @@ the vector ALPHABET.
 	(assert (= (length res) 4))
 	(assert (string= (babel:octets-to-string res) (format nil "foo~%")))
 	(format t "~a~%" (babel:octets-to-string res))
-	(funcall done))
+	(laap/fs:close file (lambda (err res)
+			      (declare (ignore err res))
+			      (funcall done))))
       :count 4096))))
+
+(test file-write (done)
+  (let ((temp (temporary-file)))
+    (laap/fs:open
+     temp
+     (lambda (err file)
+       (when err (error err))
+       (laap/fs:write
+	file
+	(lambda (err res)
+	  (declare (ignore res))
+	  (when err (error err))
+	  (format t "File contents: ~a" (with-open-file (f temp)
+					  (read-line f)))
+	  (laap/fs:close file (lambda (err res)
+				(declare (ignore err res))
+				(funcall done))))
+	:data (babel:string-to-octets (format nil "foo~%"))))
+     :flags (list laap/fs:+o-write-only+ laap/fs:+o-create+))))

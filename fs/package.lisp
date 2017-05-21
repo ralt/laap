@@ -2,6 +2,16 @@
   (:use #:cl)
   (:export #:open
 	   #:file
-	   #:read)
+	   #:read
+	   #:write
+	   #:close
+
+	   #:+o-read-only+
+	   #:+o-write-only+
+	   #:+o-read-write+
+
+	   #:+o-create+)
   (:shadow #:open
-	   #:read))
+	   #:read
+	   #:write
+	   #:close))
