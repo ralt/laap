@@ -97,6 +97,3 @@
 (cffi:defcfun ("timerfd_gettime" timerfd-gettime) :int
   (fd :int)
   (curr-value :pointer))
-
-(cffi:defcfun ("pthread_exit" pthread-exit) :void
-  (retval :pointer))

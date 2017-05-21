@@ -8,6 +8,10 @@
 	  (*loop* (make-instance 'event-loop))
 	  (bt:*default-special-bindings* `((*thread-pool* . ,*thread-pool*)
 					   (*loop* . ,*loop*))))
+     #+sbcl
+     (sb-sys:ignore-interrupt sb-unix:sigpipe)
+     #-sbcl
+     (warn "SIGPIPE can not be avoided in this implementation")
      (progn ,@body)
      (let ((thread-pool-thread (start-thread-pool)))
        (start-event-loops)
