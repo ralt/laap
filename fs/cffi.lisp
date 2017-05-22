@@ -33,3 +33,7 @@
 (cffi:defcfun ("rename" c-rename) :int
   (oldpath :string)
   (newpath :string))
+
+(cffi:defcfun ("ftruncate" c-ftruncate) :int
+  (fd :int)
+  (length :long))

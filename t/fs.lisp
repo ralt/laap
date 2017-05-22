@@ -85,3 +85,27 @@ the vector ALPHABET.
        (assert (probe-file new-name))
        (funcall done))
      :oldpath temp :newpath new-name)))
+
+(test file-truncate (done)
+  (let* ((temp (temporary-file))
+	 (file (make-instance 'laap/fs:file
+			      :path temp
+			      :direction :output
+			      :if-does-not-exist :create)))
+    (laap/fs:write
+     file
+     (lambda (err res)
+       (declare (ignore res))
+       (when err (error err))
+       (with-open-file (f temp)
+	 (assert (= (file-length f) 3)))
+       (laap/fs:truncate
+	file
+	(lambda (err res)
+	  (declare (ignore res))
+	  (when err (error err))
+	  (with-open-file (f temp)
+	    (assert (= (file-length f) 1)))
+	  (funcall done))
+	:length 1))
+     :data (babel:string-to-octets "foo"))))

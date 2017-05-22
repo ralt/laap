@@ -89,4 +89,10 @@
 	  (funcall callback nil nil)
 	  (funcall callback (strerror errno) nil)))))
 
-(defun truncate (file callback &key length))
+(defun truncate (file callback &key length)
+  (laap:with-blocking-thread truncate
+    (loop
+       (if (= (c-ftruncate (fd file) length) -1)
+	   (unless (= errno +eintr+)
+	     (return-from truncate (funcall callback (strerror errno) nil)))
+	   (return-from truncate (funcall callback nil nil))))))
