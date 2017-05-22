@@ -22,17 +22,16 @@ the vector ALPHABET.
     f))
 
 (test file-read-empty (done)
-  (laap/fs:open
-   (temporary-file)
-   (lambda (err file)
-     (when err (error err))
-     (laap/fs:read
-      file
-      (lambda (err res)
-	(when err (error err))
-	(assert (= (length res) 0))
-	(funcall done))
-      :count 4096))))
+  (let ((file (make-instance 'laap/fs:file
+			     :path (temporary-file)
+			     :direction :input)))
+    (laap/fs:read
+     file
+     (lambda (err res)
+       (when err (error err))
+       (assert (= (length res) 0))
+       (funcall done))
+     :count 4096)))
 
 (defvar *temporary-file-foo* (format nil "/tmp/~a" (random-string)))
 (with-open-file (f *temporary-file-foo*
@@ -42,41 +41,39 @@ the vector ALPHABET.
   (format f "foo~%"))
 
 (test file-read (done)
-  (laap/fs:open
-   *temporary-file-foo*
-   (lambda (err file)
-     (when err (error err))
-     (laap/fs:read
-      file
-      (lambda (err res)
-	(when err (error err))
-	(assert (= (length res) 4))
-	(assert (string= (babel:octets-to-string res) (format nil "foo~%")))
-	(format t "~a~%" (babel:octets-to-string res))
-	(laap/fs:close file (lambda (err res)
-			      (declare (ignore err res))
-			      (funcall done))))
-      :count 4096))))
+  (let ((file (make-instance 'laap/fs:file
+			     :path *temporary-file-foo*
+			     :direction :input)))
+    (laap/fs:read
+     file
+     (lambda (err res)
+       (when err (error err))
+       (assert (= (length res) 4))
+       (assert (string= (babel:octets-to-string res) (format nil "foo~%")))
+       (format t "~a~%" (babel:octets-to-string res))
+       (laap/fs:close file (lambda (err res)
+			     (declare (ignore err res))
+			     (funcall done))))
+     :count 4096)))
 
 (test file-write (done)
-  (let ((temp (temporary-file)))
-    (laap/fs:open
-     temp
-     (lambda (err file)
+  (let* ((temp (temporary-file))
+	 (file (make-instance 'laap/fs:file
+			      :path temp
+			      :direction :output
+			      :if-does-not-exist :create)))
+    (laap/fs:write
+     file
+     (lambda (err res)
+       (declare (ignore res))
        (when err (error err))
-       (laap/fs:write
-	file
-	(lambda (err res)
-	  (declare (ignore res))
-	  (when err (error err))
-	  (assert (string= (with-open-file (f temp)
-			     (read-line f))
-			   (format nil "foo~%")))
-	  (laap/fs:close file (lambda (err res)
-				(declare (ignore err res))
-				(funcall done))))
-	:data (babel:string-to-octets (format nil "foo~%"))))
-     :flags (list laap/fs:+o-write-only+ laap/fs:+o-create+))))
+       (assert (string= (with-open-file (f temp)
+			  (read-line f))
+			(format nil "foo~%")))
+       (laap/fs:close file (lambda (err res)
+			     (declare (ignore err res))
+			     (funcall done))))
+     :data (babel:string-to-octets (format nil "foo~%")))))
 
 (test file-rename (done)
   (let ((temp (temporary-file))

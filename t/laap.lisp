@@ -29,31 +29,20 @@
     (lambda (err client-socket)
       (laap:spawn (accept-loop socket))
       (when err (error err))
-      (laap/fs:open
-       "/etc/hosts"
-       (lambda (err file)
+      (laap/socket:send
+       client-socket
+       (lambda (err res)
+	 (declare (ignore res))
 	 (when err (error err))
-	 (laap/fs:read
-	  file
-	  (lambda (err hosts)
-	    (when err (error err))
-	    (laap/socket:send
-	     client-socket
-	     (lambda (err res)
-	       (declare (ignore res))
-	       (when err (error err))
-	       (laap/socket:close
-		client-socket
-		#'laap:noop))
-	     :data (babel:string-to-octets
-		    (format nil
-			    "HTTP/1.0 200 OK~c~cContent-Length: ~a~c~c~c~c~a~c~c"
-			    #\return #\linefeed
-			    (length hosts)
-			    #\return #\linefeed #\return #\linefeed
-			    (babel:octets-to-string hosts)
-			    #\return #\linefeed))))
-	  :count 4096))))))
+	 (laap/socket:close
+	  client-socket
+	  #'laap:noop))
+       :data (babel:string-to-octets
+	      (format nil
+		      "HTTP/1.0 200 OK~c~cContent-Length: 5~c~c~c~cPong~%~c~c"
+		      #\return #\linefeed
+		      #\return #\linefeed #\return #\linefeed
+		      #\return #\linefeed))))))
 
 (defun http-request (done)
   (let ((socket (make-instance 'laap/socket:ipv4-socket)))

@@ -1,26 +1,38 @@
 (in-package #:laap/fs)
 
-(defun open (path callback &key (flags '(+o-read-only+)))
-  (let ((open-flags (reduce (lambda (p c)
-			      (logior p c))
-			    flags)))
-    (format t "open flags: ~a~%" open-flags)
-    (laap:with-blocking-thread open
-      (loop
-	 (let ((fd (c-open path open-flags)))
-	   (if (= fd -1)
-	       (unless (= errno +eintr+)
-		 (funcall callback (strerror errno) nil))
-	       (return-from open (funcall callback nil (make-instance 'file :fd fd)))))))))
-
 (defun close (file callback)
   (laap:with-blocking-thread close
     (if (= (c-close (fd file)) 0)
 	(funcall callback nil nil)
 	(funcall callback (strerror errno) nil))))
 
+(deftype direction ()
+  '(member :input :output :input-output))
+
+(deftype if-does-not-exist ()
+  '(member :create))
+
 (defclass file ()
-  ((fd :initarg :fd :reader fd)))
+  ((path :initarg :path :accessor path)
+   (fd :accessor fd)
+   (direction :initarg :direction :reader direction :type direction)
+   (if-does-not-exist :initarg :if-does-not-exist :accessor if-does-not-exist :type if-does-not-exist)))
+
+(defmethod initialize-instance :after ((file file) &key)
+  (let ((open-flags (logior (cond ((eq (direction file) :output) +o-write-only+)
+				  ((eq (direction file) :input) +o-read-only+)
+				  ((eq (direction file) :input-output) +o-read-write+)
+				  (t 0))
+			    (cond ((not (slot-boundp file 'if-does-not-exist)) 0)
+				  ((eq (if-does-not-exist file) :create) +o-create+)
+				  (t 0)))))
+    (laap:with-blocking-thread open
+      (loop
+	 (let ((fd (c-open (path file) open-flags)))
+	   (if (= fd -1)
+	       (unless (= errno +eintr+)
+		 (error (strerror errno)))
+	       (return-from open (setf (fd file) fd))))))))
 
 (defun read (file callback &key count)
   (laap:with-blocking-thread read
@@ -76,3 +88,5 @@
       (if (= (c-rename c-oldpath c-newpath) 0)
 	  (funcall callback nil nil)
 	  (funcall callback (strerror errno) nil)))))
+
+(defun truncate (file callback &key length))
