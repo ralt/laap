@@ -1,20 +1,24 @@
 (in-package #:laap/test)
 
-(defvar *ascii-alphabet* "abcdefghijklmnopqrstuvwxyz")
+(defun getrandom (count)
+  (let ((lisp-array (make-array count))
+	(read-bytes 0))
+    (loop
+       (cffi:with-foreign-object (buf :char count)
+	 (let ((n (cffi:foreign-funcall "syscall" :long 318 :pointer buf :int count :uint 0 :long)))
+	   (if (= n -1)
+	       (unless (= laap/fs::errno 4)
+		 (error (laap/fs::strerror laap/fs::errno)))
+	       (progn
+		 (loop for i below count do (setf (elt lisp-array (+ i read-bytes))
+						  (cffi:mem-aref buf :char i)))
+		 (incf read-bytes n)
+		 (when (= read-bytes count)
+		   (return-from getrandom lisp-array)))))))))
 
-;;; https://common-lisp.net/project/bese/docs/arnesi/html/api/function_005FIT.BESE.ARNESI_003A_003ARANDOM-STRING.html
-(defun random-string (&optional (length 32) (alphabet *ascii-alphabet*))
-  "Returns a random alphabetic string.
-
-The returned string will contain LENGTH characters chosen from
-the vector ALPHABET.
-"
-  (loop with id = (make-string length)
-	with alphabet-length = (length alphabet)
-	for i below length
-	do (setf (cl:aref id i)
-		 (cl:aref alphabet (random alphabet-length)))
-	finally (return id)))
+(defun random-string ()
+  (remove "=" (base32:bytes-to-base32 (getrandom 16))
+	  :test #'string=))
 
 (defun temporary-file ()
   (let ((f (format nil "/tmp/~a" (random-string))))
