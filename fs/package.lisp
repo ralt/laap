@@ -5,6 +5,7 @@
 	   #:read
 	   #:write
 	   #:close
+	   #:rename
 
 	   #:+o-read-only+
 	   #:+o-write-only+

@@ -29,3 +29,7 @@
   (fd :int)
   (buf :pointer)
   (count :uint))
+
+(cffi:defcfun ("rename" c-rename) :int
+  (oldpath :string)
+  (newpath :string))

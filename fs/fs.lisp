@@ -68,3 +68,11 @@
 (defun lisp-buffer-to-c-buffer (lisp-buffer c-buffer length offset)
   (loop for i below length
      do (setf (cffi:mem-aref c-buffer :char i) (elt lisp-buffer (+ offset i)))))
+
+(defun rename (callback &key oldpath newpath)
+  (laap:with-blocking-thread rename
+    (cffi:with-foreign-strings ((c-oldpath oldpath)
+				(c-newpath newpath))
+      (if (= (c-rename c-oldpath c-newpath) 0)
+	  (funcall callback nil nil)
+	  (funcall callback (strerror errno) nil)))))
