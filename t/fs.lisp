@@ -145,3 +145,18 @@
        (assert (not (probe-file temp)))
        (funcall done))
      :pathname temp)))
+
+(test file-readlink (done)
+  (let ((temp (temporary-file))
+	(new-name (format nil "/tmp/~a" (random-string))))
+    (laap/fs:symlink
+     (lambda (err res)
+       (declare (ignore res))
+       (when err (error err))
+       (laap/fs:readlink
+	(lambda (err res)
+	  (when err (error err))
+	  (assert (string= new-name res)))
+	:pathname new-name)
+       (funcall done))
+     :target temp :linkpath new-name)))

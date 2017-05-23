@@ -8,7 +8,8 @@
 	   #:truncate
 	   #:link
 	   #:symlink
-	   #:unlink)
+	   #:unlink
+	   #:readlink)
   (:shadow #:read
 	   #:write
 	   #:close

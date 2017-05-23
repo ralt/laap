@@ -48,3 +48,26 @@
 
 (cffi:defcfun ("unlink" c-unlink) :int
   (pathname :string))
+
+(cffi:defcstruct stat
+  (mode-t :uint)
+  (st-ino :ulong)
+  (st-dev :uint32)
+  (st-nlink :uint32)
+  (st-uid :uint)
+  (st-gid :uint)
+  (st-size :long)
+  (st-atime :long)
+  (st-mtime :long)
+  (st-ctime :long))
+
+(cffi:defcfun ("lstat" c-lstat) :int
+  (pathname :string)
+  (stat :pointer))
+
+(defconstant +path-max+ 4096)
+
+(cffi:defcfun ("readlink" c-readlink) :int
+  (pathname :string)
+  (buf :string)
+  (bufsiz :uint))

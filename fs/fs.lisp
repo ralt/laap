@@ -119,3 +119,20 @@
       (if (= (c-unlink c-pathname) 0)
 	  (funcall callback nil nil)
 	  (funcall callback (strerror errno) nil)))))
+
+(defun readlink (callback &key pathname)
+  (laap:with-blocking-thread readlink
+    (cffi:with-foreign-object (sb '(:struct stat))
+      (cffi:with-foreign-string (c-pathname pathname)
+	(when (= (c-lstat c-pathname sb) -1)
+	  (return-from readlink (funcall callback (strerror errno) nil)))
+	(let* ((st-size (cffi:foreign-slot-value sb '(:struct stat) 'st-size))
+	       (bufsize (if (= st-size 0)
+			    +path-max+
+			    (1+ st-size))))
+	  (cffi:with-foreign-object (buf :char bufsize)
+	    (let ((written-size (c-readlink c-pathname buf bufsize)))
+	      (when (= written-size -1)
+		(return-from readlink (funcall callback (strerror errno) nil)))
+	      (setf (cffi:mem-aref buf :char written-size) 0)
+	      (funcall callback nil (cffi:foreign-string-to-lisp buf)))))))))
