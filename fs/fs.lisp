@@ -98,7 +98,7 @@
 	   (return-from truncate (funcall callback nil nil))))))
 
 (defun link (callback &key oldpath newpath)
-  (laap:with-blocking-thread rename
+  (laap:with-blocking-thread link
     (cffi:with-foreign-strings ((c-oldpath oldpath)
 				(c-newpath newpath))
       (if (= (c-link c-oldpath c-newpath) 0)
@@ -106,7 +106,7 @@
 	  (funcall callback (strerror errno) nil)))))
 
 (defun symlink (callback &key target linkpath)
-  (laap:with-blocking-thread rename
+  (laap:with-blocking-thread symlink
     (cffi:with-foreign-strings ((c-target target)
 				(c-linkpath linkpath))
       (if (= (c-symlink c-target c-linkpath) 0)
@@ -114,7 +114,7 @@
 	  (funcall callback (strerror errno) nil)))))
 
 (defun unlink (callback &key pathname)
-  (laap:with-blocking-thread rename
+  (laap:with-blocking-thread unlink
     (cffi:with-foreign-string (c-pathname pathname)
       (if (= (c-unlink c-pathname) 0)
 	  (funcall callback nil nil)
