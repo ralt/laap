@@ -104,3 +104,11 @@
       (if (= (c-link c-oldpath c-newpath) 0)
 	  (funcall callback nil nil)
 	  (funcall callback (strerror errno) nil)))))
+
+(defun symlink (callback &key target linkpath)
+  (laap:with-blocking-thread rename
+    (cffi:with-foreign-strings ((c-target target)
+				(c-linkpath linkpath))
+      (if (= (c-symlink c-target c-linkpath) 0)
+	  (funcall callback nil nil)
+	  (funcall callback (strerror errno) nil)))))

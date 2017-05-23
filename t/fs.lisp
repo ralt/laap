@@ -124,3 +124,14 @@
        (assert (probe-file new-name))
        (funcall done))
      :oldpath temp :newpath new-name)))
+
+(test file-symlink (done)
+  (let ((temp (temporary-file))
+	(new-name (format nil "/tmp/~a" (random-string))))
+    (laap/fs:symlink
+     (lambda (err res)
+       (declare (ignore res))
+       (when err (error err))
+       (assert (probe-file new-name))
+       (funcall done))
+     :target temp :linkpath new-name)))

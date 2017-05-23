@@ -41,3 +41,7 @@
 (cffi:defcfun ("link" c-link) :int
   (oldpath :string)
   (newpath :string))
+
+(cffi:defcfun ("symlink" c-symlink) :int
+  (target :string)
+  (newpath :string))
