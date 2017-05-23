@@ -7,7 +7,7 @@
        (cffi:with-foreign-object (buf :char (- count read-bytes))
 	 (let ((n (cffi:foreign-funcall "syscall" :long 318 :pointer buf :int count :uint 0 :long)))
 	   (if (= n -1)
-	       (unless (= laap/fs::errno 4)
+	       (unless (= laap/fs::errno laap/fs::+eintr+)
 		 (error (laap/fs::strerror laap/fs::errno)))
 	       (progn
 		 (loop for i below count do (setf (elt lisp-array (+ i read-bytes))
