@@ -49,17 +49,17 @@
 (cffi:defcfun ("unlink" c-unlink) :int
   (pathname :string))
 
-(cffi:defcstruct stat
-  (mode-t :uint)
-  (st-ino :ulong)
-  (st-dev :uint32)
-  (st-nlink :uint32)
-  (st-uid :uint)
-  (st-gid :uint)
-  (st-size :long)
-  (st-atime :long)
-  (st-mtime :long)
-  (st-ctime :long))
+(cffi:defcstruct (stat :size 144)
+  (st-mode :uint32 :offset 24)
+  (st-ino :uint64 :offset 8)
+  (st-dev :uint64 :offset 0)
+  (st-nlink :uint64 :offset 16)
+  (st-uid :uint32 :offset 28)
+  (st-gid :uint32 :offset 32)
+  (st-size :int64 :offset 48)
+  (st-atime :long :offset 72)
+  (st-mtime :long :offset 88)
+  (st-ctime :long :offset 104))
 
 (cffi:defcfun ("lstat" c-lstat) :int
   (pathname :string)
