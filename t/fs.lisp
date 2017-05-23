@@ -4,7 +4,7 @@
   (let ((lisp-array (make-array count))
 	(read-bytes 0))
     (loop
-       (cffi:with-foreign-object (buf :char count)
+       (cffi:with-foreign-object (buf :char (- count read-bytes))
 	 (let ((n (cffi:foreign-funcall "syscall" :long 318 :pointer buf :int count :uint 0 :long)))
 	   (if (= n -1)
 	       (unless (= laap/fs::errno 4)
