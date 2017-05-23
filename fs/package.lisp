@@ -5,7 +5,8 @@
 	   #:write
 	   #:close
 	   #:rename
-	   #:truncate)
+	   #:truncate
+	   #:link)
   (:shadow #:read
 	   #:write
 	   #:close

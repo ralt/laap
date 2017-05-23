@@ -113,3 +113,14 @@
 	  (funcall done))
 	:length 1))
      :data (babel:string-to-octets "foo"))))
+
+(test file-link (done)
+  (let ((temp (temporary-file))
+	(new-name (format nil "/tmp/~a" (random-string))))
+    (laap/fs:link
+     (lambda (err res)
+       (declare (ignore res))
+       (when err (error err))
+       (assert (probe-file new-name))
+       (funcall done))
+     :oldpath temp :newpath new-name)))

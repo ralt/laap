@@ -37,3 +37,7 @@
 (cffi:defcfun ("ftruncate" c-ftruncate) :int
   (fd :int)
   (length :long))
+
+(cffi:defcfun ("link" c-link) :int
+  (oldpath :string)
+  (newpath :string))

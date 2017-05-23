@@ -96,3 +96,11 @@
 	   (unless (= errno +eintr+)
 	     (return-from truncate (funcall callback (strerror errno) nil)))
 	   (return-from truncate (funcall callback nil nil))))))
+
+(defun link (callback &key oldpath newpath)
+  (laap:with-blocking-thread rename
+    (cffi:with-foreign-strings ((c-oldpath oldpath)
+				(c-newpath newpath))
+      (if (= (c-link c-oldpath c-newpath) 0)
+	  (funcall callback nil nil)
+	  (funcall callback (strerror errno) nil)))))
