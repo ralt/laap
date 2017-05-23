@@ -135,3 +135,13 @@
        (assert (probe-file new-name))
        (funcall done))
      :target temp :linkpath new-name)))
+
+(test file-unlink (done)
+  (let ((temp (temporary-file)))
+    (laap/fs:unlink
+     (lambda (err res)
+       (declare (ignore res))
+       (when err (error err))
+       (assert (not (probe-file temp)))
+       (funcall done))
+     :pathname temp)))

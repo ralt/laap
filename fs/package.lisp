@@ -7,7 +7,8 @@
 	   #:rename
 	   #:truncate
 	   #:link
-	   #:symlink)
+	   #:symlink
+	   #:unlink)
   (:shadow #:read
 	   #:write
 	   #:close

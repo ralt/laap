@@ -112,3 +112,10 @@
       (if (= (c-symlink c-target c-linkpath) 0)
 	  (funcall callback nil nil)
 	  (funcall callback (strerror errno) nil)))))
+
+(defun unlink (callback &key pathname)
+  (laap:with-blocking-thread rename
+    (cffi:with-foreign-string (c-pathname pathname)
+      (if (= (c-unlink c-pathname) 0)
+	  (funcall callback nil nil)
+	  (funcall callback (strerror errno) nil)))))
