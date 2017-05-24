@@ -73,11 +73,11 @@
        (when err (error err))
        (assert (string= (with-open-file (f temp)
 			  (read-line f))
-			(format nil "foo~%")))
+			(format nil "foo")))
        (laap/fs:close file (lambda (err res)
 			     (declare (ignore err res))
 			     (funcall done))))
-     :data (babel:string-to-octets (format nil "foo~%")))))
+     :data (babel:string-to-octets (format nil "foo")))))
 
 (test file-rename (done)
   (let ((temp (temporary-file))
@@ -156,7 +156,7 @@
        (laap/fs:readlink
 	(lambda (err res)
 	  (when err (error err))
-	  (assert (string= new-name res)))
+	  (assert (string= temp res)))
 	:pathname new-name)
        (funcall done))
      :target temp :linkpath new-name)))
