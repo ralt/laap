@@ -13,4 +13,5 @@
 	   #:fd
 	   #:noop
 	   #:with-blocking-thread
-	   #:*recv-buffer-length*))
+	   #:*recv-buffer-length*
+	   #:add-reporter))

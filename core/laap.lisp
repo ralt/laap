@@ -8,6 +8,8 @@
 	  (*loop* (make-instance 'event-loop))
 	  (bt:*default-special-bindings* `((*thread-pool* . ,*thread-pool*)
 					   (*loop* . ,*loop*))))
+     (add-reporter (lambda (err)
+		     (format t "A thread died with error: ~a~%" err)))
      (unwind-protect
 	  (progn ,@body)
        (let ((thread-pool-thread (start-thread-pool)))

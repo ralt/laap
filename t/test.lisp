@@ -8,35 +8,14 @@
 (defvar *results* nil)
 
 (defun run-all-tests ()
-  (let ((results (make-hash-table)))
-    (maphash (lambda (k v)
-	       (handler-case
-		   (progn
-		     (laap:with-event-loop (funcall v (lambda ())))
-		     (setf (gethash k results) t))
-		 (error (e)
-		   (setf (gethash k results) e))))
-	     *tests*)
-    (check-results results)))
+  (maphash #'run *tests*))
 
-(defun run (test)
-  (let ((results (make-hash-table))
-	(test-callback (gethash test *tests*)))
-    (handler-case
-	(progn
-	  (laap:with-event-loop (funcall test-callback (lambda ())))
-	  (setf (gethash test results) t))
-      (error (e)
-	(setf (gethash test results) e)))
-    (check-results results)))
-
-(defun check-results (results)
-  (maphash
-   (lambda (test-name result)
-     (if result
-	 (format t "~a passed.~%" test-name)
-	 (progn
-	   (format *error-output* "~a failed with: ~a~%" test-name result)
-	   (return-from check-results))))
-   results)
-  t)
+(defun run (test-name test-callback)
+  (let ((result nil))
+    (laap:with-event-loop
+      (laap:add-reporter (lambda (err)
+			   (setf result err)))
+      (funcall test-callback (lambda ())))
+    (if result
+	(format t "~a failed with: ~a~%" test-name result)
+	(format t "~a passed.~%" test-name))))

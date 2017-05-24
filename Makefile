@@ -2,7 +2,7 @@ NAME=laap
 TEST_PACKAGE=laap-test
 SOURCES := $(wildcard src/*.lisp) $(wildcard *.asd) $(wildcard t/*.lisp)
 QL_LOCAL=$(PWD)/.quicklocal
-LOCAL_OPTS=--noinform --noprint --no-sysinit --no-userinit
+LOCAL_OPTS=--noinform --noprint --no-sysinit --no-userinit --disable-debugger
 QL_OPTS=--load $(QL_LOCAL)/setup.lisp
 
 all: test
