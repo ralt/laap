@@ -48,14 +48,17 @@
        do (add-thread (lambda ()
 			(main-loop efd))))))
 
+(defun exit-event-loop-p ()
+  (when *thread-should-exit*
+    (return-from exit-event-loop-p t))
+  (bt:with-lock-held ((timers-lock *loop*))
+    (= (hash-table-count (timers *loop*)) 0)))
+
 (defun main-loop (efd)
   (let ((events (cffi:foreign-alloc '(:struct epoll-event) :count 1)))
     (unwind-protect
 	 (loop
-	    (when *thread-should-exit* (return-from main-loop))
-	    (bt:with-lock-held ((timers-lock *loop*))
-	      (when (= (hash-table-count (timers *loop*)) 0)
-		(return-from main-loop (quit-event-loop))))
+	    (when (exit-event-loop-p) (return-from main-loop))
 	    (let ((n (epoll-wait efd events 1 -1)))
 	      (when (= n 1)
 		(block continue
@@ -67,20 +70,12 @@
 		    (when (or (> (logand event-events +epollerr+) 0)
 			      (> (logand event-events +epollhup+) 0))
 		      (unwind-protect
-			   (handle-error timer (make-condition 'error "epoll error"))
-			(progn
-			  (when *thread-should-exit* (return-from main-loop))
-			  (bt:with-lock-held ((timers-lock *loop*))
-			    (when (= (hash-table-count (timers *loop*)) 0)
-			      (return-from main-loop (quit-event-loop)))))))
+			   (handle-error timer "epoll error")
+			(when (exit-event-loop-p) (return-from main-loop))))
 
 		    (handle-event timer)
 
-		    (when *thread-should-exit* (return-from main-loop))
-
-		    (bt:with-lock-held ((timers-lock *loop*))
-		      (when (= (hash-table-count (timers *loop*)) 0)
-			(return-from main-loop (quit-event-loop)))))))))
+		    (when (exit-event-loop-p) (return-from main-loop)))))))
       (cffi:foreign-free events))))
 
 (defun add-event (efd timerfd timer)
