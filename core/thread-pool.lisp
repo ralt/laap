@@ -87,6 +87,22 @@
       (setf (result action-item) value))
     (bt:condition-notify (event action-item))))
 
+(defun getrandom (count)
+  (let ((lisp-array (make-array count))
+	(read-bytes 0))
+    (loop
+       (cffi:with-foreign-object (buf :char (- count read-bytes))
+	 (let ((n (cffi:foreign-funcall "syscall" :long 318 :pointer buf :int count :uint 0 :long)))
+	   (if (= n -1)
+	       (unless (= errno +eintr+)
+		 (error (strerror errno)))
+	       (progn
+		 (loop for i below count do (setf (elt lisp-array (+ i read-bytes))
+						  (cffi:mem-aref buf :char i)))
+		 (incf read-bytes n)
+		 (when (= read-bytes count)
+		   (return-from getrandom lisp-array)))))))))
+
 (defclass thread-properties ()
   ((blocking :initarg :blocking :accessor blocking)))
 
@@ -106,7 +122,9 @@
 			  (add-to-queue (make-instance
 					 'thread-error
 					 :error e
-					 :thread (bt:current-thread)))))))
+					 :thread (bt:current-thread))))))
+		    :name (remove "=" (base32:bytes-to-base32 (getrandom 16))
+				  :test #'string=))
 		   (threads *thread-pool*))
 	  (make-instance 'thread-properties :blocking 0))))
 
