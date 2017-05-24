@@ -12,6 +12,7 @@
 
 (defun run (test-name test-callback)
   (let ((result nil))
+    (format t "Testing ~a...~%" test-name)
     (laap:with-event-loop
       (laap:add-reporter (lambda (err)
 			   (setf result err)))
