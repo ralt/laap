@@ -161,15 +161,17 @@
 	(setf sin-port (htons port))
 	(setf sin-addr inp))
       (when (= (c-bind (fd socket) sockaddr (cffi:foreign-type-size '(:struct sockaddr-in))) -1)
-	(return-from listen (laap:spawn
-			     (lambda (err res)
-			       (declare (ignore err res))
-			       (funcall callback (strerror errno) nil)))))
+	(let ((error-message (strerror errno)))
+	  (return-from listen (laap:spawn
+			       (lambda (err res)
+				 (declare (ignore err res))
+				 (funcall callback error-message nil))))))
       (when (= (c-listen (fd socket) backlog) -1)
-	(return-from listen (laap:spawn
-			     (lambda (err res)
-			       (declare (ignore err res))
-			       (funcall callback (strerror errno) nil)))))
+	(let ((error-message (strerror errno)))
+	  (return-from listen (laap:spawn
+			       (lambda (err res)
+				 (declare (ignore err res))
+				 (funcall callback error-message nil))))))
       (laap:spawn (lambda (err res)
 		    (declare (ignore err res))
 		    (funcall callback nil nil))))))
