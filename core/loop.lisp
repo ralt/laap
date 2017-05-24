@@ -52,7 +52,8 @@
   (when *thread-should-exit*
     (return-from exit-event-loop-p t))
   (bt:with-lock-held ((timers-lock *loop*))
-    (= (hash-table-count (timers *loop*)) 0)))
+    (when (= (hash-table-count (timers *loop*)) 0)
+      (quit-event-loop))))
 
 (defun main-loop (efd)
   (let ((events (cffi:foreign-alloc '(:struct epoll-event) :count 1)))
