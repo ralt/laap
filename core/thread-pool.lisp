@@ -99,7 +99,8 @@
 	  (make-instance 'thread-properties :blocking 0))))
 
 (defun quit-event-loop ()
-  (add-to-queue t))
+  (add-to-queue t)
+  t)
 
 (defclass blocking-action (action)
   ((thread :initarg :thread :reader thread)))
