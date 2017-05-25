@@ -62,8 +62,8 @@
 	(when (= (c-connect (fd socket) sockaddr (cffi:foreign-type-size '(:struct sockaddr-in))) -1)
 	  (unless (= errno +einprogress+)
 	    (return-from connect (laap:handle-error timer
-						    (strerror errno))))
-	  (laap:add-timer timer))))))
+						    (strerror errno)))))
+	(laap:add-timer timer)))))
 
 (defclass timer-socket-connect (socket-timer)
   ((laap:direction :initform +epollout+)))

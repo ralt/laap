@@ -16,7 +16,6 @@
 	       (bt:make-thread
 		(lambda ()
 		  (bt:with-lock-held (end-lock)
-		    (format t "~a~%" test-callback)
 		    (run test-name test-callback
 			 (lambda (success-p)
 			   (unless success-p
@@ -38,7 +37,6 @@
 	   (if (eq err t)
 	       (p "passed.~%" test-name)
 	       (p "failed with: ~a~%" test-name err))
-	   (format t "done ~a~%" test-callback)
 	   (funcall c (eq err t))))
     (p "Testing ~a... " test-name)
     (laap:with-event-loop

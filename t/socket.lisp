@@ -11,7 +11,7 @@
     (laap/socket:connect
      socket
      (lambda (err res)
-       (assert (eq err nil))
+       (when err (error err))
        (laap/socket:close socket
 			  (lambda (err res)
 			    (funcall done))))
@@ -34,7 +34,6 @@
 	       (when err (error err))
 	       (setf result (concatenate 'string result (babel:octets-to-string res))))
 	     :end (lambda (err res)
-		    (format t "Received: ~a~%" result)
 		    (laap/socket:close socket (lambda (err res)
 						(funcall done)))))))
 	:data (babel:string-to-octets
@@ -54,4 +53,4 @@
        (laap/socket:close socket
 			  (lambda (err res)
 			    (funcall done))))
-     :ip "127.0.0.1" :port 5555)))
+     :ip "127.0.0.1" :port 5557)))

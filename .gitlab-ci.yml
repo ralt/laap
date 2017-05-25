@@ -8,4 +8,4 @@ tests:
     # magic folders such as `/proc/1/root` which are recursive. ASDF chokes
     # on that.
     - rm -f /root/.config/common-lisp/source-registry.conf.d/cl-travis.conf
-    - make
+    - ./run-tests.bash
