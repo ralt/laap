@@ -54,7 +54,6 @@
        (when err (error err))
        (assert (= (length res) 4))
        (assert (string= (babel:octets-to-string res) (format nil "foo~%")))
-       (format t "~a~%" (babel:octets-to-string res))
        (laap/fs:close file (lambda (err res)
 			     (declare (ignore err res))
 			     (funcall done))))

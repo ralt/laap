@@ -3,24 +3,31 @@
 (defvar *tests* (make-hash-table))
 
 (defmacro test (name var &body body)
-  `(setf (gethash ',name *tests*) (lambda ,var ,@body)))
+  `(progn
+     (defun ,name ,var ,@body)
+     (setf (gethash ',name *tests*) #',name)))
 
 (defun run-all-tests ()
   (let ((end (bt:make-condition-variable))
 	(end-lock (bt:make-lock))
-	(counter (hash-table-count *tests*)))
+	(counter (hash-table-count *tests*))
+	(success t))
     (maphash (lambda (test-name test-callback)
 	       (bt:make-thread
 		(lambda ()
 		  (bt:with-lock-held (end-lock)
+		    (format t "~a~%" test-callback)
 		    (run test-name test-callback
-			 (lambda ()
+			 (lambda (success-p)
+			   (unless success-p
+			     (setf success nil))
 			   (decf counter)
 			   (when (= counter 0)
 			     (bt:condition-notify end))))))))
 	     *tests*)
     (bt:with-lock-held (end-lock)
-      (bt:condition-wait end end-lock))))
+      (bt:condition-wait end end-lock))
+    success))
 
 (defun p (&rest args)
   (apply #'format t args)
@@ -31,7 +38,8 @@
 	   (if (eq err t)
 	       (p "passed.~%" test-name)
 	       (p "failed with: ~a~%" test-name err))
-	   (funcall c)))
+	   (format t "done ~a~%" test-callback)
+	   (funcall c (eq err t))))
     (p "Testing ~a... " test-name)
     (laap:with-event-loop
       (laap:add-reporter #'done)

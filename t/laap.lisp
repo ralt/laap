@@ -97,5 +97,9 @@
 		  (funcall done))))))))
 
 (test spawn-delay (done)
-  (loop for i below 3
-     do (laap:spawn (wait-and-print done))))
+  (let ((counter 0))
+    (loop for i below 3
+       do (laap:spawn (wait-and-print (lambda ()
+					(incf counter)
+					(when (= counter 3)
+					  (funcall done))))))))
