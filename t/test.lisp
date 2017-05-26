@@ -16,13 +16,14 @@
 	       (bt:make-thread
 		(lambda ()
 		  (bt:with-lock-held (end-lock)
-		    (run test-name test-callback
-			 (lambda (success-p)
-			   (unless success-p
-			     (setf success nil))
-			   (decf counter)
-			   (when (= counter 0)
-			     (bt:condition-notify end))))))))
+		    (run-test
+		     test-name test-callback
+		     (lambda (success-p)
+		       (unless success-p
+			 (setf success nil))
+		       (decf counter)
+		       (when (= counter 0)
+			 (bt:condition-notify end))))))))
 	     *tests*)
     (bt:with-lock-held (end-lock)
       (bt:condition-wait end end-lock))
@@ -32,7 +33,7 @@
   (apply #'format t args)
   (force-output))
 
-(defun run (test-name test-callback c)
+(defun run-test (test-name test-callback c)
   (flet ((done (&optional (err t))
 	   (if (eq err t)
 	       (p "passed.~%" test-name)
@@ -42,3 +43,13 @@
     (laap:with-event-loop
       (laap:add-reporter #'done)
       (funcall test-callback #'done))))
+
+(defun run (test-name)
+  (flet ((done (&optional (err t))
+	   (if (eq err t)
+	       (p "passed.~%" test-name)
+	       (p "failed with: ~a~%" test-name err))))
+    (p "Testing ~a... " test-name)
+    (laap:with-event-loop
+      (laap:add-reporter #'done)
+      (funcall (gethash test-name *tests*) #'done))))
