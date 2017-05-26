@@ -11,9 +11,11 @@
     (laap/socket:connect
      socket
      (lambda (err res)
+       (declare (ignore res))
        (when err (error err))
        (laap/socket:close socket
 			  (lambda (err res)
+			    (declare (ignore err res))
 			    (funcall done))))
      :ip "127.0.0.1" :port 4242)))
 
