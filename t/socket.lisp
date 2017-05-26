@@ -19,6 +19,16 @@
 			    (funcall done))))
      :ip "127.0.0.1" :port 4242)))
 
+(test socket-fail-connection (done)
+  (let ((socket (make-instance 'laap/socket:ipv4-socket)))
+    (laap/socket:connect
+     socket
+     (lambda (err res)
+       (declare (ignore res))
+       (assert (= (laap:errno err) 111))
+       (funcall done))
+     :ip "127.0.0.1" :port 42)))
+
 (test socket-send-and-receive (done)
   (let ((socket (make-instance 'laap/socket:ipv4-socket)))
     (laap/socket:connect
