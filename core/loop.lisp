@@ -75,9 +75,9 @@
 			    timer
 			    (make-condition
 			     'epoll-error
-			     :error-type (cond ((> (logand event-events +epollerr+) 1) :err)
-					       ((> (logand event-events +epollhup+) 1) :hup)
-					       ((> (logand event-events +epollpri+) 1) :pri))))
+			     :error-type (cond ((not (= (logand event-events +epollerr+) 0)) :err)
+					       ((not (= (logand event-events +epollhup+) 0)) :hup)
+					       ((not (= (logand event-events +epollpri+) 0)) :pri))))
 			(when (exit-event-loop-p) (return-from main-loop))))
 
 		    (handle-event timer)

@@ -35,8 +35,9 @@
 
 (defun handle-epoll-error (timer error)
   (cond ((eq (laap:error-type error) :err)
-	 (cffi:with-foreign-objects ((optval '(:pointer :int))
-				     (optlen '(:pointer :uint)))
+	 (cffi:with-foreign-objects ((optval '(:int))
+				     (optlen '(:uint)))
+	   (setf (cffi:mem-aref optlen :uint) (cffi:foreign-type-size :int))
 	   (getsockopt (laap:fd timer) +sol-socket+ +so-error+ optval optlen)
 	   (laap:handle-error timer (make-condition 'laap:os-error :errno (cffi:mem-ref optval :int)))))
 	((eq (laap:error-type error) :hup)
