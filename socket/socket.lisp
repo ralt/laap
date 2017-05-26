@@ -28,8 +28,21 @@
 
 (defmethod laap:handle-error ((timer socket-timer) error)
   (unwind-protect
-       (funcall (laap:callback timer) error nil)
-    (laap:remove-timer timer)))
+       (cond ((typep error 'laap:epoll-error) (handle-epoll-error timer error))
+	     (t (progn
+		  (funcall (laap:callback timer) error nil)
+		  (laap:remove-timer timer))))))
+
+(defun handle-epoll-error (timer error)
+  (cond ((eq (laap:error-type error) :err)
+	 (cffi:with-foreign-objects ((optval '(:pointer :int))
+				     (optlen '(:pointer :uint)))
+	   (getsockopt (laap:fd timer) +sol-socket+ +so-error+ optval optlen)
+	   (laap:handle-error timer (make-condition 'laap:os-error :errno (cffi:mem-ref optval :int)))))
+	((eq (laap:error-type error) :hup)
+	 (laap:handle-event timer))
+	((eq (laap:error-type error) :rdhup)
+	 (laap:handle-error timer (make-condition 'laap:eof-error)))))
 
 (defclass ipv4-socket (socket) ())
 
@@ -69,14 +82,9 @@
   ((laap:direction :initform +epollout+)))
 
 (defmethod laap:handle-event ((timer timer-socket-connect))
-  (cffi:with-foreign-objects ((optval '(:pointer :int))
-			      (optlen '(:pointer :uint)))
-    (getsockopt (laap:fd timer) +sol-socket+ +so-error+ optval optlen)
-    (when (= (cffi:mem-ref optval :int) 0)
-      (unwind-protect
-	   (funcall (laap:callback timer) nil nil)
-	(return-from laap:handle-event (laap:remove-timer timer))))
-    (laap:handle-error timer (make-condition 'laap:os-error :errno (cffi:mem-ref optval :int)))))
+  (unwind-protect
+       (funcall (laap:callback timer) nil nil)
+    (return-from laap:handle-event (laap:remove-timer timer))))
 
 (defmethod close ((socket ipv4-socket) callback &key)
   (laap:spawn (lambda (err res)

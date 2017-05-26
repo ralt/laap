@@ -11,3 +11,6 @@
 
 (define-condition epoll-error ()
   ((error-type :initarg :error-type :reader error-type :type 'epoll-error-members)))
+
+(define-condition eof-error ()
+  ())

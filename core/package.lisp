@@ -15,4 +15,8 @@
 	   #:with-blocking-thread
 	   #:*recv-buffer-length*
 	   #:add-reporter
-	   #:os-error))
+	   #:os-error
+	   #:epoll-error
+	   #:error-type
+	   #:errno
+	   #:eof-error))
