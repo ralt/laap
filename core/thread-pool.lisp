@@ -95,7 +95,7 @@
 	 (let ((n (cffi:foreign-funcall "syscall" :long 318 :pointer buf :int count :uint 0 :long)))
 	   (if (= n -1)
 	       (unless (= errno +eintr+)
-		 (error (strerror errno)))
+		 (error (make-condition 'os-error :errno errno)))
 	       (progn
 		 (loop for i below count do (setf (elt lisp-array (+ i read-bytes))
 						  (cffi:mem-aref buf :char i)))

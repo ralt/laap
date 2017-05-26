@@ -14,4 +14,5 @@
 	   #:noop
 	   #:with-blocking-thread
 	   #:*recv-buffer-length*
-	   #:add-reporter))
+	   #:add-reporter
+	   #:os-error))

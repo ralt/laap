@@ -4,7 +4,7 @@
   (laap:with-blocking-thread close
     (if (= (c-close (fd file)) 0)
 	(funcall callback nil nil)
-	(funcall callback (strerror errno) nil))))
+	(funcall callback (make-condition 'laap:os-error :errno errno) nil))))
 
 (deftype direction ()
   '(member :input :output :input-output))
@@ -31,7 +31,7 @@
 	 (let ((fd (c-open (path file) open-flags)))
 	   (if (= fd -1)
 	       (unless (= errno +eintr+)
-		 (error (strerror errno)))
+		 (error (make-condition 'laap:os-error :errno errno)))
 	       (return-from open (setf (fd file) fd))))))))
 
 (defun read (file callback &key count)
@@ -43,7 +43,9 @@
 	   (let ((read-bytes (c-read (fd file) buf (- count total-read-bytes))))
 	     (when (= read-bytes -1)
 	       (unless (= errno +eintr+)
-		 (return-from read (funcall callback (strerror errno) nil))))
+		 (return-from read (funcall callback
+					    (make-condition 'laap:os-error :errno errno)
+					    nil))))
 	     (when (= read-bytes 0)
 	       ;; EOF
 	       (return))
@@ -68,7 +70,9 @@
 	     (let ((written-bytes (c-write (fd file) buf data-length)))
 	       (when (= written-bytes -1)
 		 (unless (= errno +eintr+)
-		   (return-from write (funcall callback (strerror errno) nil))))
+		   (return-from write (funcall callback
+					       (make-condition 'laap:os-error :errno errno)
+					       nil))))
 	       (when (= (+ written-bytes total-written-bytes) data-length)
 		 (return-from write (funcall callback nil nil)))
 	       (incf total-written-bytes written-bytes))))))))
@@ -87,14 +91,14 @@
 				(c-newpath newpath))
       (if (= (c-rename c-oldpath c-newpath) 0)
 	  (funcall callback nil nil)
-	  (funcall callback (strerror errno) nil)))))
+	  (funcall callback (make-condition 'laap:os-error :errno errno) nil)))))
 
 (defun truncate (file callback &key length)
   (laap:with-blocking-thread truncate
     (loop
        (if (= (c-ftruncate (fd file) length) -1)
 	   (unless (= errno +eintr+)
-	     (return-from truncate (funcall callback (strerror errno) nil)))
+	     (return-from truncate (funcall callback (make-condition 'laap:os-error :errno errno) nil)))
 	   (return-from truncate (funcall callback nil nil))))))
 
 (defun link (callback &key oldpath newpath)
@@ -103,7 +107,7 @@
 				(c-newpath newpath))
       (if (= (c-link c-oldpath c-newpath) 0)
 	  (funcall callback nil nil)
-	  (funcall callback (strerror errno) nil)))))
+	  (funcall callback (make-condition 'laap:os-error :errno errno) nil)))))
 
 (defun symlink (callback &key target linkpath)
   (laap:with-blocking-thread symlink
@@ -111,21 +115,21 @@
 				(c-linkpath linkpath))
       (if (= (c-symlink c-target c-linkpath) 0)
 	  (funcall callback nil nil)
-	  (funcall callback (strerror errno) nil)))))
+	  (funcall callback (make-condition 'laap:os-error :errno errno) nil)))))
 
 (defun unlink (callback &key pathname)
   (laap:with-blocking-thread unlink
     (cffi:with-foreign-string (c-pathname pathname)
       (if (= (c-unlink c-pathname) 0)
 	  (funcall callback nil nil)
-	  (funcall callback (strerror errno) nil)))))
+	  (funcall callback (make-condition 'laap:os-error :errno errno) nil)))))
 
 (defun readlink (callback &key pathname)
   (laap:with-blocking-thread readlink
     (cffi:with-foreign-object (sb '(:struct stat))
       (cffi:with-foreign-string (c-pathname pathname)
 	(when (= (c-lstat c-pathname sb) -1)
-	  (return-from readlink (funcall callback (strerror errno) nil)))
+	  (return-from readlink (funcall callback (make-condition 'laap:os-error :errno errno) nil)))
 	(let* ((st-size (cffi:foreign-slot-value sb '(:struct stat) 'st-size))
 	       (bufsize (if (= st-size 0)
 			    +path-max+
@@ -133,6 +137,8 @@
 	  (cffi:with-foreign-object (buf :char bufsize)
 	    (let ((written-size (c-readlink c-pathname buf bufsize)))
 	      (when (= written-size -1)
-		(return-from readlink (funcall callback (strerror errno) nil)))
+		(return-from readlink (funcall callback
+					       (make-condition 'laap:os-error :errno errno)
+					       nil)))
 	      (setf (cffi:mem-aref buf :char written-size) 0)
 	      (funcall callback nil (cffi:foreign-string-to-lisp buf)))))))))

@@ -50,6 +50,7 @@
 (defconstant +epoll-ctl-mod+ 3)
 
 (defconstant +epollin+ 1)
+(defconstant +epollpri+ 2)
 (defconstant +epollout+ 4)
 (defconstant +epollerr+ 8)
 (defconstant +epollhup+ 16)

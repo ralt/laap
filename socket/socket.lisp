@@ -44,7 +44,7 @@
 				(socket-type socket)
 				(socket-protocol socket))))
 	(when (= socketfd -1)
-	  (error (strerror errno)))
+	  (error (make-condition 'laap:os-error :errno errno)))
 	(setf (slot-value socket 'fd) socketfd))))
 
 (defmethod connect ((socket ipv4-socket) callback &key ip port)
@@ -62,7 +62,7 @@
 	(when (= (c-connect (fd socket) sockaddr (cffi:foreign-type-size '(:struct sockaddr-in))) -1)
 	  (unless (= errno +einprogress+)
 	    (return-from connect (laap:handle-error timer
-						    (strerror errno)))))
+						    (make-condition 'laap:os-error :errno errno)))))
 	(laap:add-timer timer)))))
 
 (defclass timer-socket-connect (socket-timer)
@@ -76,14 +76,14 @@
       (unwind-protect
 	   (funcall (laap:callback timer) nil nil)
 	(return-from laap:handle-event (laap:remove-timer timer))))
-    (laap:handle-error timer (strerror (cffi:mem-ref optval :int)))))
+    (laap:handle-error timer (make-condition 'laap:os-error :errno (cffi:mem-ref optval :int)))))
 
 (defmethod close ((socket ipv4-socket) callback &key)
   (laap:spawn (lambda (err res)
 		(declare (ignore err res))
 		(if (= (c-close (fd socket)) 0)
 		    (funcall callback nil nil)
-		    (funcall callback (strerror errno) nil)))))
+		    (funcall callback (make-condition 'laap:os-error :errno errno) nil)))))
 
 (defmethod send ((socket ipv4-socket) callback &key data)
   (laap:add-timer (make-instance 'timer-socket-send
@@ -107,7 +107,7 @@
 	     (return-from laap:handle-event
 	       (if (= errno +ewouldblock+)
 		   (laap:add-timer timer)
-		   (laap:handle-error timer (strerror errno)))))
+		   (laap:handle-error timer (make-condition 'laap:os-error :errno errno)))))
 	   ;; :)
 	   (when (= sent data-length)
 	     (unwind-protect
@@ -134,7 +134,7 @@
 	(return-from laap:handle-event
 	  (if (= errno +ewouldblock+)
 	      (laap:add-timer timer)
-	      (laap:handle-error timer (strerror errno)))))
+	      (laap:handle-error timer (make-condition 'laap:os-error :errno errno)))))
       ;; :)
       (let ((lisp-buffer (make-array received :element-type '(unsigned-byte 8))))
 	(loop for i below received
@@ -161,9 +161,9 @@
 	(setf sin-port (htons port))
 	(setf sin-addr inp))
       (when (= (c-bind (fd socket) sockaddr (cffi:foreign-type-size '(:struct sockaddr-in))) -1)
-	(return-from listen (funcall callback (strerror errno) nil)))
+	(return-from listen (funcall callback (make-condition 'laap:os-error :errno errno) nil)))
       (when (= (c-listen (fd socket) backlog) -1)
-	(return-from listen (funcall callback (strerror errno) nil)))
+	(return-from listen (funcall callback (make-condition 'laap:os-error :errno errno) nil)))
       (funcall callback nil nil))))
 
 (defmethod accept ((socket ipv4-socket) callback &key)
@@ -180,7 +180,7 @@
 	(if (= errno +eagain+)
 	    (laap:add-timer timer)
 	    (unwind-protect
-		 (laap:handle-error timer (strerror errno))
+		 (laap:handle-error timer (make-condition 'laap:os-error :errno errno))
 	      (laap:remove-timer timer)))
 	(unwind-protect
 	     (funcall (laap:callback timer) nil (make-instance 'ipv4-socket

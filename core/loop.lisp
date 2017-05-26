@@ -71,7 +71,13 @@
 		    (when (or (> (logand event-events +epollerr+) 0)
 			      (> (logand event-events +epollhup+) 0))
 		      (unwind-protect
-			   (handle-error timer "epoll error")
+			   (handle-error
+			    timer
+			    (make-condition
+			     'epoll-error
+			     :error-type (cond ((> (logand event-events +epollerr+) 1) :err)
+					       ((> (logand event-events +epollhup+) 1) :hup)
+					       ((> (logand event-events +epollpri+) 1) :pri))))
 			(when (exit-event-loop-p) (return-from main-loop))))
 
 		    (handle-event timer)
@@ -92,5 +98,5 @@
 	  (logior direction +epollet+ +epolloneshot+))
     (when (= (epoll-ctl efd +epoll-ctl-add+ fd event) -1)
       (unless (= errno +eexist+)
-	(error (strerror errno)))
+	(error (make-condition 'os-error :errno errno)))
       (epoll-ctl efd +epoll-ctl-mod+ fd event))))
