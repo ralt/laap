@@ -17,6 +17,4 @@
 	   #:add-reporter
 	   #:os-error
 	   #:epoll-error
-	   #:error-type
-	   #:errno
-	   #:eof-error))
+	   #:errno))

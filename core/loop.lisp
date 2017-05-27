@@ -68,21 +68,9 @@
 			 (fd (ldb (byte 32 0) (getf event 'data)))
 			 (timer (bt:with-lock-held ((timers-lock *loop*))
 				  (gethash fd (timers *loop*)))))
-		    (when (or (> (logand event-events +epollerr+) 0)
-			      (> (logand event-events +epollhup+) 0))
-		      (unwind-protect
-			   (handle-error
-			    timer
-			    (make-condition
-			     'epoll-error
-			     :error-type (cond ((not (= (logand event-events +epollerr+) 0)) :err)
-					       ((not (= (logand event-events +epollhup+) 0)) :hup)
-					       ((not (= (logand event-events +epollpri+) 0)) :pri))))
-			(when (exit-event-loop-p) (return-from main-loop))))
-
-		    (handle-event timer)
-
-		    (when (exit-event-loop-p) (return-from main-loop)))))))
+		    (if (= (logand event-events +epollerr+) 1)
+			(handle-error timer (make-condition 'epoll-error))
+			(handle-event timer)))))))
       (cffi:foreign-free events))))
 
 (defun add-event (efd timerfd timer)
