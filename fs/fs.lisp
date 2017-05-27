@@ -1,11 +1,5 @@
 (in-package #:laap/fs)
 
-(defun close (file callback)
-  (laap:with-blocking-thread close
-    (if (= (c-close (fd file)) 0)
-	(funcall callback nil nil)
-	(funcall callback (make-condition 'laap:os-error :errno errno) nil))))
-
 (deftype direction ()
   '(member :input :output :input-output))
 
@@ -16,7 +10,20 @@
   ((path :initarg :path :accessor path)
    (fd :accessor fd)
    (direction :initarg :direction :reader direction :type direction)
-   (if-does-not-exist :initarg :if-does-not-exist :accessor if-does-not-exist :type if-does-not-exist)))
+   (if-does-not-exist :initarg :if-does-not-exist :accessor if-does-not-exist :type if-does-not-exist))
+  (:documentation "An object abstracting over a file."))
+
+(defgeneric close (file)
+  (:documentation "Close the backed file."))
+
+(defgeneric read (file callback &key count)
+  (:documentation "Read a specified amount of bytes from a file."))
+
+(defgeneric write (file callback &key data)
+  (:documentation "Write specified data to a file."))
+
+(defgeneric truncate (file callback &key length)
+  (:documentation "Truncate a file to a specified length."))
 
 (defmethod initialize-instance :after ((file file) &key)
   (let ((open-flags (logior (cond ((eq (direction file) :output) +o-write-only+)
@@ -34,7 +41,13 @@
 		 (error (make-condition 'laap:os-error :errno errno)))
 	       (return-from open (setf (fd file) fd))))))))
 
-(defun read (file callback &key count)
+(defmethod close (file callback)
+  (laap:with-blocking-thread close
+    (if (= (c-close (fd file)) 0)
+	(funcall callback nil nil)
+	(funcall callback (make-condition 'laap:os-error :errno errno) nil))))
+
+(defmethod read (file callback &key count)
   (laap:with-blocking-thread read
     (let ((lisp-buffer (make-array count :element-type '(unsigned-byte 8)))
 	  (total-read-bytes 0))
@@ -59,7 +72,7 @@
 	   do (setf (elt return-value i) (elt lisp-buffer i)))
 	(funcall callback nil return-value)))))
 
-(defun write (file callback &key data)
+(defmethod write (file callback &key data)
   (laap:with-blocking-thread write
     (let ((data-length (length data))
 	  (total-written-bytes 0))
@@ -93,7 +106,7 @@
 	  (funcall callback nil nil)
 	  (funcall callback (make-condition 'laap:os-error :errno errno) nil)))))
 
-(defun truncate (file callback &key length)
+(defmethod truncate (file callback &key length)
   (laap:with-blocking-thread truncate
     (loop
        (if (= (c-ftruncate (fd file) length) -1)

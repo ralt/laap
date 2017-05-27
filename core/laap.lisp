@@ -4,6 +4,7 @@
 (defvar *loop* nil)
 
 (defmacro with-event-loop (&body body)
+  "Run code in the laap event loop."
   (let ((err (gensym))
 	(res (gensym)))
     `(let* ((*thread-pool* (make-instance 'thread-pool))
