@@ -68,7 +68,7 @@
 			 (fd (ldb (byte 32 0) (getf event 'data)))
 			 (timer (bt:with-lock-held ((timers-lock *loop*))
 				  (gethash fd (timers *loop*)))))
-		    (if (= (logand event-events +epollerr+) 1)
+		    (if (= (logand event-events +epollerr+) +epollerr+)
 			(handle-error timer (make-condition 'epoll-error))
 			(handle-event timer)))))))
       (cffi:foreign-free events))))

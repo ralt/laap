@@ -27,17 +27,16 @@
 (defclass socket-timer (laap:timer) ())
 
 (defmethod laap:handle-error ((timer socket-timer) error)
-  (unwind-protect
-       (cond ((typep error 'laap:epoll-error)
-	      (cffi:with-foreign-objects ((optval :int)
-					  (optlen :uint))
-		(setf (cffi:mem-aref optlen :uint) (cffi:foreign-type-size :int))
-		(getsockopt (laap:fd timer) +sol-socket+ +so-error+ optval optlen)
-		(laap:handle-error timer
-				   (make-condition 'laap:os-error :errno (cffi:mem-ref optval :int)))))
-	     (t (progn
-		  (funcall (laap:callback timer) error nil)
-		  (laap:remove-timer timer))))))
+  (cond ((typep error 'laap:epoll-error)
+	 (cffi:with-foreign-objects ((optval :int)
+				     (optlen :uint))
+	   (setf (cffi:mem-aref optlen :uint) (cffi:foreign-type-size :int))
+	   (getsockopt (laap:fd timer) +sol-socket+ +so-error+ optval optlen)
+	   (laap:handle-error timer
+			      (make-condition 'laap:os-error :errno (cffi:mem-ref optval :int)))))
+	(t (progn
+	     (funcall (laap:callback timer) error nil)
+	     (laap:remove-timer timer)))))
 
 (defclass ipv4-socket (socket) ())
 

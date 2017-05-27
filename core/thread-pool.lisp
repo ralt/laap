@@ -116,8 +116,7 @@
     (setf (gethash (bt:make-thread
 		    (lambda ()
 		      (handler-case
-			  (progn
-			    (funcall (callback action)))
+			  (funcall (callback action))
 			(error (e)
 			  (add-to-queue (make-instance
 					 'thread-error
@@ -134,7 +133,8 @@
 			     (main-loop (efd *loop*)))))
 
 (defun add-reporter (reporter)
-  (push reporter (reporters *thread-pool*)))
+  (bt:with-recursive-lock-held ((reporters-lock *thread-pool*))
+    (push reporter (reporters *thread-pool*))))
 
 (defclass thread-error (action)
   ((thread :initarg :thread :reader thread)
