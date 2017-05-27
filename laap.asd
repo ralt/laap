@@ -3,7 +3,7 @@
   :author "Florian Margaine <florian@margaine.com>"
   :license "MIT"
   :serial t
-  :depends-on (:cffi :cl-coroutine :bordeaux-threads :uiop :cl-ppcre :cffi-libffi :cl-base32)
+  :depends-on (:cffi :bordeaux-threads :uiop :cl-ppcre :cl-base32)
   :components ((:module "core"
 		:components ((:file "package")
 			     (:file "laap" :depends-on ("package"
