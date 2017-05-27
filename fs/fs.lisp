@@ -90,6 +90,14 @@
 		 (return-from write (funcall callback nil nil)))
 	       (incf total-written-bytes written-bytes))))))))
 
+(defmethod truncate (file callback &key length)
+  (laap:with-blocking-thread truncate
+    (loop
+       (if (= (c-ftruncate (fd file) length) -1)
+	   (unless (= errno +eintr+)
+	     (return-from truncate (funcall callback (make-condition 'laap:os-error :errno errno) nil)))
+	   (return-from truncate (funcall callback nil nil))))))
+
 (defun c-buffer-to-lisp-buffer (c-buffer lisp-buffer length offset)
   (loop for i below length
      do (setf (elt lisp-buffer (+ offset i)) (cffi:mem-aref c-buffer :char i))))
@@ -105,14 +113,6 @@
       (if (= (c-rename c-oldpath c-newpath) 0)
 	  (funcall callback nil nil)
 	  (funcall callback (make-condition 'laap:os-error :errno errno) nil)))))
-
-(defmethod truncate (file callback &key length)
-  (laap:with-blocking-thread truncate
-    (loop
-       (if (= (c-ftruncate (fd file) length) -1)
-	   (unless (= errno +eintr+)
-	     (return-from truncate (funcall callback (make-condition 'laap:os-error :errno errno) nil)))
-	   (return-from truncate (funcall callback nil nil))))))
 
 (defun link (callback &key oldpath newpath)
   (laap:with-blocking-thread link
