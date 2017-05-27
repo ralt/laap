@@ -26,7 +26,10 @@
      (lambda (err res)
        (declare (ignore res))
        (assert (= (laap:errno err) 111))
-       (funcall done))
+       (laap/socket:close socket
+			  (lambda (err res)
+			    (declare (ignore err res))
+			    (funcall done))))
      :ip "127.0.0.1" :port 42)))
 
 (test socket-send-and-receive (done)
