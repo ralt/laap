@@ -12,7 +12,7 @@
 (defun http-server (&rest args)
   (declare (ignore args))
   (laap:with-event-loop
-    (let ((socket (make-instance 'laap/socket:tcp-socket)))
+    (let ((socket (make-instance 'laap/socket:ipv4-tcp-socket)))
       (laap/socket:listen socket (accept-loop socket)
 			  :ip "127.0.0.1" :port 9092))))
 
@@ -45,7 +45,7 @@
 		      #\return #\linefeed))))))
 
 (defun http-request (done)
-  (let ((socket (make-instance 'laap/socket:tcp-socket)))
+  (let ((socket (make-instance 'laap/socket:ipv4-tcp-socket)))
     (laap/socket:connect
      socket
      (lambda (err res)

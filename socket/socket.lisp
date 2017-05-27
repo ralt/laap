@@ -41,10 +41,10 @@
 		(funcall (laap:callback timer) error nil)
 	     (laap:remove-timer timer)))))
 
-(defclass tcp-socket (socket) ()
-  (:documentation "Implementation of a TCP socket."))
+(defclass ipv4-tcp-socket (socket) ()
+  (:documentation "Implementation of an IPv4 TCP socket."))
 
-(defmethod initialize-instance :after ((socket tcp-socket) &key)
+(defmethod initialize-instance :after ((socket ipv4-tcp-socket) &key)
   (setf (slot-value socket 'domain) +af-inet+)
   (setf (slot-value socket 'type) (logior +sock-stream+ +sock-nonblock+))
   (setf (slot-value socket 'protocol) 0)
@@ -58,7 +58,7 @@
 	  (error (make-condition 'laap:os-error :errno errno)))
 	(setf (slot-value socket 'fd) socketfd))))
 
-(defmethod connect ((socket tcp-socket) callback &key ip port)
+(defmethod connect ((socket ipv4-tcp-socket) callback &key ip port)
   (let ((timer (make-instance 'timer-socket-connect :fd (fd socket) :callback callback)))
     (cffi:with-foreign-object (inp '(:struct in-addr))
       (cffi:with-foreign-string (cp ip)
@@ -85,14 +85,14 @@
        (funcall (laap:callback timer) nil nil)
     (return-from laap:handle-event (laap:remove-timer timer))))
 
-(defmethod close ((socket tcp-socket) callback &key)
+(defmethod close ((socket ipv4-tcp-socket) callback &key)
   (laap:spawn (lambda (err res)
 		(declare (ignore err res))
 		(if (= (c-close (fd socket)) 0)
 		    (funcall callback nil nil)
 		    (funcall callback (make-condition 'laap:os-error :errno errno) nil)))))
 
-(defmethod send ((socket tcp-socket) callback &key data)
+(defmethod send ((socket ipv4-tcp-socket) callback &key data)
   (laap:add-timer (make-instance 'timer-socket-send
 				 :fd (fd socket)
 				 :callback callback
@@ -124,7 +124,7 @@
 	   ;; ¯\_(ツ)_/¯
 	   (setf (data timer) (subseq (data timer) (1- sent))))))))
 
-(defmethod receive ((socket tcp-socket) callback &key end)
+(defmethod receive ((socket ipv4-tcp-socket) callback &key end)
   (laap:add-timer (make-instance 'timer-socket-receive
 				 :fd (fd socket)
 				 :callback callback
@@ -158,7 +158,7 @@
 	       (laap:handle-event timer)
 	    (laap:remove-timer timer)))))))
 
-(defmethod listen ((socket tcp-socket) callback &key ip port (backlog 768))
+(defmethod listen ((socket ipv4-tcp-socket) callback &key ip port (backlog 768))
   (cffi:with-foreign-object (inp '(:struct in-addr))
     (cffi:with-foreign-string (cp ip)
       (inet-aton cp inp))
@@ -175,7 +175,7 @@
 	(return-from listen (funcall callback (make-condition 'laap:os-error :errno errno) nil)))
       (funcall callback nil nil))))
 
-(defmethod accept ((socket tcp-socket) callback &key)
+(defmethod accept ((socket ipv4-tcp-socket) callback &key)
   (laap:add-timer (make-instance 'timer-socket-accept
 				 :fd (fd socket)
 				 :callback callback)))
@@ -193,6 +193,6 @@
 		 (laap:handle-error timer (make-condition 'laap:os-error :errno errno))
 	      (laap:remove-timer timer)))
 	(unwind-protect
-	     (funcall (laap:callback timer) nil (make-instance 'tcp-socket
+	     (funcall (laap:callback timer) nil (make-instance 'ipv4-tcp-socket
 							       :fd accepted-sockfd))
 	  (laap:remove-timer timer)))))
