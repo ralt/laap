@@ -8,7 +8,7 @@
     (http-request (lambda (result)
 		    (format t "~a" result)))))
 
-;;; ./buildapp --output bin/foo --eval '(declaim (optimize (speed 3)))' --asdf-tree ~/quicklisp/ --load-system laap-test --entry laap/test::http-server --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format t "~A~%" c)))'
+;;; ./buildapp --output bin/foo --eval '(declaim (optimize (speed 3)))' --load .quicklocal/setup.lisp --asdf-tree . --eval '(ql:quickload :laap)' --load-system laap-test --entry laap/test::http-server --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format t "~A~%" c)))'
 (defun http-server (&rest args)
   (declare (ignore args))
   (laap:with-event-loop
