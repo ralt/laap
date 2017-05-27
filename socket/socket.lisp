@@ -34,8 +34,8 @@
 	   (getsockopt (laap:fd timer) +sol-socket+ +so-error+ optval optlen)
 	   (laap:handle-error timer
 			      (make-condition 'laap:os-error :errno (cffi:mem-ref optval :int)))))
-	(t (progn
-	     (funcall (laap:callback timer) error nil)
+	(t (unwind-protect
+		(funcall (laap:callback timer) error nil)
 	     (laap:remove-timer timer)))))
 
 (defclass ipv4-socket (socket) ())

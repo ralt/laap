@@ -46,11 +46,14 @@
 	       do (execute action))
 	    (bt:condition-wait (event *thread-pool*) (lock *thread-pool*))))))))
 
-(defun add-to-queue (action)
+(defun %add-to-queue (action)
   (bt:with-recursive-lock-held ((lock *thread-pool*))
     (bt:with-recursive-lock-held ((action-queue-lock *thread-pool*))
       (setf (gethash action (action-queue *thread-pool*)) (make-instance 'action-queue-item)))
-    (setf (queue *thread-pool*) (append (queue *thread-pool*) (list action))))
+    (setf (queue *thread-pool*) (append (queue *thread-pool*) (list action)))))
+
+(defun add-to-queue (action)
+  (%add-to-queue action)
   (bt:condition-notify (event *thread-pool*)))
 
 (defun add-thread (fn)

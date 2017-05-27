@@ -48,7 +48,9 @@
   (flet ((done (&optional (err t))
 	   (if (eq err t)
 	       (p "passed.~%" test-name)
-	       (p "failed with: ~a~%" test-name err))))
+	       (progn
+		 (p "failed with: ~a~%" test-name err)
+		 (laap::%add-to-queue t)))))
     (p "Testing ~a... " test-name)
     (laap:with-event-loop
       (laap:add-reporter #'done)
