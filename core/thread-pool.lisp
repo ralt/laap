@@ -15,13 +15,13 @@
 
 (defmethod initialize-instance ((pool thread-pool) &key)
   (setf (queue pool) nil)
-  (setf (lock pool) (bt:make-recursive-lock))
+  (setf (lock pool) (bt:make-recursive-lock "Thread pool lock"))
   (setf (event pool) (bt:make-condition-variable))
   (setf (threads pool) (make-hash-table :test 'eq))
   (setf (action-queue pool) (make-hash-table :test 'eq))
-  (setf (action-queue-lock pool) (bt:make-recursive-lock))
+  (setf (action-queue-lock pool) (bt:make-recursive-lock "Action queue thread pool lock"))
   (setf (reporters pool) nil)
-  (setf (reporters-lock pool) (bt:make-recursive-lock)))
+  (setf (reporters-lock pool) (bt:make-recursive-lock "Reporters thread pool lock")))
 
 (defclass action () ())
 
@@ -31,20 +31,26 @@
 (defun start-thread-pool ()
   (bt:make-thread
    (lambda ()
+     (start-event-loops)
      (bt:with-recursive-lock-held ((lock *thread-pool*))
-       (block loop
+       (block thread-pool-loop
 	 (loop
 	    (loop for action = (pop (queue *thread-pool*))
 	       until (eq action nil)
 	       when (eq action t)
-	       do (return-from loop (progn
-				      (maphash (lambda (thread properties)
-						 (declare (ignore properties))
-						 (bt:interrupt-thread thread (lambda ())))
-					       (threads *thread-pool*))
-				      (c-close (efd *loop*))))
+	       do (return-from thread-pool-loop
+		    (progn
+		      (maphash
+		       (lambda (thread properties)
+			 (declare (ignore properties))
+			 (bt:interrupt-thread thread
+					      (lambda ()
+						(setf *thread-should-exit* t))))
+		       (threads *thread-pool*))
+		      (c-close (efd *loop*))))
 	       do (execute action))
-	    (bt:condition-wait (event *thread-pool*) (lock *thread-pool*))))))))
+	    (bt:condition-wait (event *thread-pool*) (lock *thread-pool*))))))
+   :name "Thread pool"))
 
 (defun %add-to-queue (action)
   (bt:with-recursive-lock-held ((lock *thread-pool*))
@@ -66,7 +72,7 @@
    (result :accessor result)))
 
 (defmethod initialize-instance ((item action-queue-item) &key)
-  (setf (lock item) (bt:make-lock))
+  (setf (lock item) (bt:make-recursive-lock "Action queue item lock"))
   (setf (event item) (bt:make-condition-variable)))
 
 (defun wait-from-action-queue (action)

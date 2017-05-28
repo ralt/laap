@@ -12,20 +12,20 @@
 	(end-lock (bt:make-lock))
 	(counter (hash-table-count *tests*))
 	(success t))
-    (maphash (lambda (test-name test-callback)
-	       (bt:make-thread
-		(lambda ()
-		  (bt:with-lock-held (end-lock)
-		    (run-test
-		     test-name test-callback
-		     (lambda (success-p)
-		       (unless success-p
-			 (setf success nil))
-		       (decf counter)
-		       (when (= counter 0)
-			 (bt:condition-notify end))))))))
-	     *tests*)
     (bt:with-lock-held (end-lock)
+      (maphash (lambda (test-name test-callback)
+		 (bt:make-thread
+		  (lambda ()
+		    (bt:with-lock-held (end-lock)
+		      (run-test
+		       test-name test-callback
+		       (lambda (success-p)
+			 (unless success-p
+			   (setf success nil))
+			 (decf counter)
+			 (when (= counter 0)
+			   (bt:condition-notify end))))))))
+	       *tests*)
       (bt:condition-wait end end-lock))
     success))
 

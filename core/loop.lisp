@@ -13,7 +13,7 @@
 
 (defmethod initialize-instance ((loop event-loop) &key)
   (setf (timers loop) (make-hash-table))
-  (setf (timers-lock loop) (bt:make-lock))
+  (setf (timers-lock loop) (bt:make-lock "Timers lock"))
   (setf (started loop) nil))
 
 (defun find-recv-buffer-length ()
