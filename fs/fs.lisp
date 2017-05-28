@@ -107,6 +107,7 @@
      do (setf (cffi:mem-aref c-buffer :char i) (elt lisp-buffer (+ offset i)))))
 
 (defun rename (callback &key oldpath newpath)
+  "Rename oldpath to newpath."
   (laap:with-blocking-thread rename
     (cffi:with-foreign-strings ((c-oldpath oldpath)
 				(c-newpath newpath))
@@ -115,6 +116,7 @@
 	  (funcall callback (make-condition 'laap:os-error :errno errno) nil)))))
 
 (defun link (callback &key oldpath newpath)
+  "Make a hard-link from newpath to oldpath."
   (laap:with-blocking-thread link
     (cffi:with-foreign-strings ((c-oldpath oldpath)
 				(c-newpath newpath))
@@ -123,6 +125,7 @@
 	  (funcall callback (make-condition 'laap:os-error :errno errno) nil)))))
 
 (defun symlink (callback &key target linkpath)
+  "Make a symbolic link at linkpath pointing to target."
   (laap:with-blocking-thread symlink
     (cffi:with-foreign-strings ((c-target target)
 				(c-linkpath linkpath))
@@ -131,6 +134,7 @@
 	  (funcall callback (make-condition 'laap:os-error :errno errno) nil)))))
 
 (defun unlink (callback &key pathname)
+  "Unlink pathname."
   (laap:with-blocking-thread unlink
     (cffi:with-foreign-string (c-pathname pathname)
       (if (= (c-unlink c-pathname) 0)
@@ -138,6 +142,7 @@
 	  (funcall callback (make-condition 'laap:os-error :errno errno) nil)))))
 
 (defun readlink (callback &key pathname)
+  "Readlink pathname."
   (laap:with-blocking-thread readlink
     (cffi:with-foreign-object (sb '(:struct stat))
       (cffi:with-foreign-string (c-pathname pathname)
