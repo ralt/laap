@@ -1,6 +1,6 @@
 (defpackage #:laap/socket
   (:use #:cl)
-  (:export #:ipv4-socket
+  (:export #:ipv4-tcp-socket
 	   #:connect
 	   #:close
 	   #:send

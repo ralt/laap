@@ -13,7 +13,7 @@
    (if-does-not-exist :initarg :if-does-not-exist :accessor if-does-not-exist :type if-does-not-exist))
   (:documentation "An object abstracting over a file."))
 
-(defgeneric close (file)
+(defgeneric close (file callback)
   (:documentation "Close the backed file."))
 
 (defgeneric read (file callback &key count)

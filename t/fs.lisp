@@ -34,7 +34,10 @@
      (lambda (err res)
        (when err (error err))
        (assert (= (length res) 0))
-       (funcall done))
+       (laap/fs:close file
+		      (lambda (err res)
+			(declare (ignore err res))
+			(funcall done))))
      :count 4096)))
 
 (defvar *temporary-file-foo* (format nil "/tmp/~a" (random-string)))
@@ -109,7 +112,10 @@
 	  (when err (error err))
 	  (with-open-file (f temp)
 	    (assert (= (file-length f) 1)))
-	  (funcall done))
+	  (laap/fs:close file
+			 (lambda (err res)
+			   (declare (ignore err res))
+			   (funcall done))))
 	:length 1))
      :data (babel:string-to-octets "foo"))))
 
@@ -155,7 +161,7 @@
        (laap/fs:readlink
 	(lambda (err res)
 	  (when err (error err))
-	  (assert (string= temp res)))
-	:pathname new-name)
-       (funcall done))
+	  (assert (string= temp res))
+	  (funcall done))
+	:pathname new-name))
      :target temp :linkpath new-name)))
