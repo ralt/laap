@@ -1,5 +1,5 @@
 tests:
-  image: debian:jessie
+  image: ralt/laap:latest
   script:
     - apt-get update && apt-get install -y curl sudo bzip2 make libffi6 wget pkg-config build-essential libffi-dev python
     - export LISP=sbcl
